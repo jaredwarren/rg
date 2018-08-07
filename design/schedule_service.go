@@ -16,7 +16,8 @@ var _ = Service("schedule", func() {
 		// Result(CollectionOf(Game))
 		HTTP(func() {
 			GET("/")
-			Response(StatusOK, "text/html")
+			// Response(StatusOK, "text/html")
+			Response(StatusOK)
 		})
 	})
 
@@ -27,7 +28,7 @@ var _ = Service("schedule", func() {
 
 	Method("list", func() {
 		Description("List all stored bottles")
-		Result(CollectionOf(Schedule))
+		Result(CollectionOf(SchedulePayload))
 		HTTP(func() {
 			GET("/")
 			Response(StatusOK)

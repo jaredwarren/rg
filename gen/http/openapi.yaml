@@ -1,0 +1,216 @@
+swagger: "2.0"
+info:
+  title: Red Green Alarm
+  description: HTTP service for managing your recipes
+  version: ""
+host: localhost:8080
+paths:
+  /:
+    get:
+      tags:
+      - schedule
+      summary: list schedule
+      description: List all stored bottles
+      operationId: schedule#list
+      responses:
+        "200":
+          description: OK response.
+          schema:
+            $ref: '#/definitions/ScheduleSchedulePayloadResponseBodyCollection'
+      schemes:
+      - http
+  /{id}:
+    delete:
+      tags:
+      - schedule
+      summary: remove schedule
+      description: Remove cron schedule
+      operationId: schedule#remove
+      parameters:
+      - name: id
+        in: path
+        description: ID of bottle to remove
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content response.
+      schemes:
+      - http
+  /favicon.ico:
+    get:
+      summary: Download static/favicon.ico
+      operationId: schedule#/favicon.ico
+      responses:
+        "200":
+          description: File downloaded
+          schema:
+            type: file
+      schemes:
+      - http
+  /schedule:
+    post:
+      tags:
+      - schedule
+      summary: schedule schedule
+      description: create new cron schedule
+      operationId: schedule#schedule
+      parameters:
+      - name: ScheduleRequestBody
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/ScheduleScheduleRequestBody'
+          required:
+          - id
+          - name
+          - cron
+          - color
+      responses:
+        "201":
+          description: Created response.
+          schema:
+            $ref: '#/definitions/ScheduleResponseBody'
+            required:
+            - color
+            - cron
+      schemes:
+      - http
+  /static/*filename:
+    get:
+      summary: Download static/
+      operationId: schedule#/static/*filename
+      responses:
+        "200":
+          description: File downloaded
+          schema:
+            type: file
+      schemes:
+      - http
+definitions:
+  SchedulePayloadResponseBody:
+    title: 'Mediatype identifier: application/vnd.rg.schedule; view=default'
+    type: object
+    properties:
+      color:
+        type: string
+        description: color to set
+        example: yellow
+        enum:
+        - red
+        - yellow
+        - green
+        - "off"
+      cron:
+        type: string
+        description: Valid cron string
+        example: 30 6 * * 1-5
+      id:
+        type: string
+        description: ID is the unique id of the schedule.
+        example: sched_21345
+      name:
+        type: string
+        description: Descriptive Name
+        example: Week Days at 6:30am
+        maxLength: 100
+    description: A SchedulePayload describes a cron schedule payload. (default view)
+    example:
+      color: green
+      cron: 30 6 * * 1-5
+      id: sched_21345
+      name: Week Days at 6:30am
+    required:
+    - id
+    - name
+    - cron
+    - color
+  ScheduleResponseBody:
+    title: ScheduleResponseBody
+    type: object
+    properties:
+      color:
+        type: string
+        description: color to set
+        example: yellow
+        enum:
+        - red
+        - yellow
+        - green
+        - "off"
+      cron:
+        type: string
+        description: Valid cron string
+        example: 30 6 * * 1-5
+      name:
+        type: string
+        description: Descriptive Name
+        example: Week Days at 6:30am
+        maxLength: 100
+    example:
+      color: "off"
+      cron: 30 6 * * 1-5
+      name: Week Days at 6:30am
+    required:
+    - color
+    - cron
+  ScheduleSchedulePayloadResponseBodyCollection:
+    title: 'Mediatype identifier: application/vnd.rg.schedule; type=collection; view=default'
+    type: array
+    items:
+      $ref: '#/definitions/SchedulePayloadResponseBody'
+    description: ListResponseBody is the result type for an array of SchedulePayloadResponseBody
+      (default view)
+    example:
+    - color: yellow
+      cron: 30 6 * * 1-5
+      id: sched_21345
+      name: Week Days at 6:30am
+    - color: yellow
+      cron: 30 6 * * 1-5
+      id: sched_21345
+      name: Week Days at 6:30am
+    - color: yellow
+      cron: 30 6 * * 1-5
+      id: sched_21345
+      name: Week Days at 6:30am
+    - color: yellow
+      cron: 30 6 * * 1-5
+      id: sched_21345
+      name: Week Days at 6:30am
+  ScheduleScheduleRequestBody:
+    title: ScheduleScheduleRequestBody
+    type: object
+    properties:
+      color:
+        type: string
+        description: color to set
+        example: red
+        enum:
+        - red
+        - yellow
+        - green
+        - "off"
+      cron:
+        type: string
+        description: Valid cron string
+        example: 30 6 * * 1-5
+      id:
+        type: string
+        description: ID is the unique id of the schedule.
+        example: sched_21345
+      name:
+        type: string
+        description: Descriptive Name
+        example: Week Days at 6:30am
+        maxLength: 100
+    example:
+      color: green
+      cron: 30 6 * * 1-5
+      id: sched_21345
+      name: Week Days at 6:30am
+    required:
+    - id
+    - name
+    - cron
+    - color

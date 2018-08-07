@@ -23,7 +23,7 @@ tasks:
       --request GET \
       http://localhost:8080/
   create:
-    description: create cron schedule
+    desc: "create cron schedule"
     cmds:  
     - |
       curl --header "Content-Type: application/json" \
