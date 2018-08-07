@@ -1,0 +1,38 @@
+version: '2'
+# https://github.com/go-task/task
+tasks:
+  svc:
+    desc: "Build svc"
+    dir: cmd/rg_svc/
+    cmds:
+      - go build
+      - ./rg_svc
+  gen:
+    desc: "generate design"
+    cmds:
+      - goa gen github.com/jaredwarren/rg/design
+  example:
+    desc: "generate examples"
+    cmds: 
+      - goa example github.com/jaredwarren/rg/design
+  # usage examples
+  list:
+    cmds:  
+    - |
+      curl --header "Content-Type: application/json" \
+      --request GET \
+      http://localhost:8080/
+  create:
+    description: create cron schedule
+    cmds:  
+    - |
+      curl --header "Content-Type: application/json" \
+      --request POST \
+      --data '{"name":"{{.name}}","cron":"{{.cron}}","color":"{{.color}}"}' \
+      http://localhost:8080/schedule
+  remove:
+    cmds:  
+    - |
+      curl --header "Content-Type: application/json" \
+      --request DELETE \
+      http://localhost:8080/{{.id}}
