@@ -10,6 +10,8 @@ package server
 import (
 	"context"
 	"net/http"
+	"path"
+	"strings"
 
 	schedule "github.com/jaredwarren/rg/gen/schedule"
 	goa "goa.design/goa"
@@ -18,11 +20,13 @@ import (
 
 // Server lists the schedule service endpoint HTTP handlers.
 type Server struct {
-	Mounts   []*MountPoint
-	Home     http.Handler
-	List     http.Handler
-	Schedule http.Handler
-	Remove   http.Handler
+	Mounts []*MountPoint
+	List   http.Handler
+	Create http.Handler
+	Remove http.Handler
+	Update http.Handler
+	Color  http.Handler
+	Sound  http.Handler
 }
 
 // ErrorNamer is an interface implemented by generated error structs that
@@ -52,17 +56,22 @@ func New(
 ) *Server {
 	return &Server{
 		Mounts: []*MountPoint{
-			{"Home", "GET", "/"},
-			{"List", "GET", "/"},
-			{"Schedule", "POST", "/schedule"},
-			{"Remove", "DELETE", "/{id}"},
+			{"List", "GET", "/schedule"},
+			{"Create", "POST", "/schedule"},
+			{"Remove", "DELETE", "/schedule/{id}"},
+			{"Update", "POST", "/color"},
+			{"Color", "GET", "/color"},
+			{"Sound", "POST", "/sound"},
 			{"static/favicon.ico", "GET", "/favicon.ico"},
-			{"static/", "GET", "/static/*filename"},
+			{"static/", "GET", "/static"},
+			{"static/index.html", "GET", "/home"},
 		},
-		Home:     NewHomeHandler(e.Home, mux, dec, enc, eh),
-		List:     NewListHandler(e.List, mux, dec, enc, eh),
-		Schedule: NewScheduleHandler(e.Schedule, mux, dec, enc, eh),
-		Remove:   NewRemoveHandler(e.Remove, mux, dec, enc, eh),
+		List:   NewListHandler(e.List, mux, dec, enc, eh),
+		Create: NewCreateHandler(e.Create, mux, dec, enc, eh),
+		Remove: NewRemoveHandler(e.Remove, mux, dec, enc, eh),
+		Update: NewUpdateHandler(e.Update, mux, dec, enc, eh),
+		Color:  NewColorHandler(e.Color, mux, dec, enc, eh),
+		Sound:  NewSoundHandler(e.Sound, mux, dec, enc, eh),
 	}
 }
 
@@ -71,68 +80,36 @@ func (s *Server) Service() string { return "schedule" }
 
 // Use wraps the server handlers with the given middleware.
 func (s *Server) Use(m func(http.Handler) http.Handler) {
-	s.Home = m(s.Home)
 	s.List = m(s.List)
-	s.Schedule = m(s.Schedule)
+	s.Create = m(s.Create)
 	s.Remove = m(s.Remove)
+	s.Update = m(s.Update)
+	s.Color = m(s.Color)
+	s.Sound = m(s.Sound)
 }
 
 // Mount configures the mux to serve the schedule endpoints.
 func Mount(mux goahttp.Muxer, h *Server) {
-	MountHomeHandler(mux, h.Home)
 	MountListHandler(mux, h.List)
-	MountScheduleHandler(mux, h.Schedule)
+	MountCreateHandler(mux, h.Create)
 	MountRemoveHandler(mux, h.Remove)
+	MountUpdateHandler(mux, h.Update)
+	MountColorHandler(mux, h.Color)
+	MountSoundHandler(mux, h.Sound)
 	MountStaticFaviconIco(mux, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, "static/favicon.ico")
 	}))
 	MountStatic(mux, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		http.ServeFile(w, r, "static/")
+		upath := path.Clean(r.URL.Path)
+		rpath := upath
+		if strings.HasPrefix(upath, "/static") {
+			rpath = upath[7:]
+		}
+		http.ServeFile(w, r, path.Join("static/", rpath))
 	}))
-}
-
-// MountHomeHandler configures the mux to serve the "schedule" service "home"
-// endpoint.
-func MountHomeHandler(mux goahttp.Muxer, h http.Handler) {
-	f, ok := h.(http.HandlerFunc)
-	if !ok {
-		f = func(w http.ResponseWriter, r *http.Request) {
-			h.ServeHTTP(w, r)
-		}
-	}
-	mux.Handle("GET", "/", f)
-}
-
-// NewHomeHandler creates a HTTP handler which loads the HTTP request and calls
-// the "schedule" service "home" endpoint.
-func NewHomeHandler(
-	endpoint goa.Endpoint,
-	mux goahttp.Muxer,
-	dec func(*http.Request) goahttp.Decoder,
-	enc func(context.Context, http.ResponseWriter) goahttp.Encoder,
-	eh func(context.Context, http.ResponseWriter, error),
-) http.Handler {
-	var (
-		encodeResponse = EncodeHomeResponse(enc)
-		encodeError    = goahttp.ErrorEncoder(enc)
-	)
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
-		ctx = context.WithValue(ctx, goa.MethodKey, "home")
-		ctx = context.WithValue(ctx, goa.ServiceKey, "schedule")
-
-		res, err := endpoint(ctx, nil)
-
-		if err != nil {
-			if err := encodeError(ctx, w, err); err != nil {
-				eh(ctx, w, err)
-			}
-			return
-		}
-		if err := encodeResponse(ctx, w, res); err != nil {
-			eh(ctx, w, err)
-		}
-	})
+	MountStaticIndexHTML(mux, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "static/index.html")
+	}))
 }
 
 // MountListHandler configures the mux to serve the "schedule" service "list"
@@ -144,7 +121,7 @@ func MountListHandler(mux goahttp.Muxer, h http.Handler) {
 			h.ServeHTTP(w, r)
 		}
 	}
-	mux.Handle("GET", "/", f)
+	mux.Handle("GET", "/schedule", f)
 }
 
 // NewListHandler creates a HTTP handler which loads the HTTP request and calls
@@ -179,9 +156,9 @@ func NewListHandler(
 	})
 }
 
-// MountScheduleHandler configures the mux to serve the "schedule" service
-// "schedule" endpoint.
-func MountScheduleHandler(mux goahttp.Muxer, h http.Handler) {
+// MountCreateHandler configures the mux to serve the "schedule" service
+// "create" endpoint.
+func MountCreateHandler(mux goahttp.Muxer, h http.Handler) {
 	f, ok := h.(http.HandlerFunc)
 	if !ok {
 		f = func(w http.ResponseWriter, r *http.Request) {
@@ -191,9 +168,9 @@ func MountScheduleHandler(mux goahttp.Muxer, h http.Handler) {
 	mux.Handle("POST", "/schedule", f)
 }
 
-// NewScheduleHandler creates a HTTP handler which loads the HTTP request and
-// calls the "schedule" service "schedule" endpoint.
-func NewScheduleHandler(
+// NewCreateHandler creates a HTTP handler which loads the HTTP request and
+// calls the "schedule" service "create" endpoint.
+func NewCreateHandler(
 	endpoint goa.Endpoint,
 	mux goahttp.Muxer,
 	dec func(*http.Request) goahttp.Decoder,
@@ -201,13 +178,13 @@ func NewScheduleHandler(
 	eh func(context.Context, http.ResponseWriter, error),
 ) http.Handler {
 	var (
-		decodeRequest  = DecodeScheduleRequest(mux, dec)
-		encodeResponse = EncodeScheduleResponse(enc)
+		decodeRequest  = DecodeCreateRequest(mux, dec)
+		encodeResponse = EncodeCreateResponse(enc)
 		encodeError    = goahttp.ErrorEncoder(enc)
 	)
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
-		ctx = context.WithValue(ctx, goa.MethodKey, "schedule")
+		ctx = context.WithValue(ctx, goa.MethodKey, "create")
 		ctx = context.WithValue(ctx, goa.ServiceKey, "schedule")
 		payload, err := decodeRequest(r)
 		if err != nil {
@@ -238,7 +215,7 @@ func MountRemoveHandler(mux goahttp.Muxer, h http.Handler) {
 			h.ServeHTTP(w, r)
 		}
 	}
-	mux.Handle("DELETE", "/{id}", f)
+	mux.Handle("DELETE", "/schedule/{id}", f)
 }
 
 // NewRemoveHandler creates a HTTP handler which loads the HTTP request and
@@ -279,14 +256,163 @@ func NewRemoveHandler(
 	})
 }
 
+// MountUpdateHandler configures the mux to serve the "schedule" service
+// "update" endpoint.
+func MountUpdateHandler(mux goahttp.Muxer, h http.Handler) {
+	f, ok := h.(http.HandlerFunc)
+	if !ok {
+		f = func(w http.ResponseWriter, r *http.Request) {
+			h.ServeHTTP(w, r)
+		}
+	}
+	mux.Handle("POST", "/color", f)
+}
+
+// NewUpdateHandler creates a HTTP handler which loads the HTTP request and
+// calls the "schedule" service "update" endpoint.
+func NewUpdateHandler(
+	endpoint goa.Endpoint,
+	mux goahttp.Muxer,
+	dec func(*http.Request) goahttp.Decoder,
+	enc func(context.Context, http.ResponseWriter) goahttp.Encoder,
+	eh func(context.Context, http.ResponseWriter, error),
+) http.Handler {
+	var (
+		decodeRequest  = DecodeUpdateRequest(mux, dec)
+		encodeResponse = EncodeUpdateResponse(enc)
+		encodeError    = goahttp.ErrorEncoder(enc)
+	)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
+		ctx = context.WithValue(ctx, goa.MethodKey, "update")
+		ctx = context.WithValue(ctx, goa.ServiceKey, "schedule")
+		payload, err := decodeRequest(r)
+		if err != nil {
+			eh(ctx, w, err)
+			return
+		}
+
+		res, err := endpoint(ctx, payload)
+
+		if err != nil {
+			if err := encodeError(ctx, w, err); err != nil {
+				eh(ctx, w, err)
+			}
+			return
+		}
+		if err := encodeResponse(ctx, w, res); err != nil {
+			eh(ctx, w, err)
+		}
+	})
+}
+
+// MountColorHandler configures the mux to serve the "schedule" service "color"
+// endpoint.
+func MountColorHandler(mux goahttp.Muxer, h http.Handler) {
+	f, ok := h.(http.HandlerFunc)
+	if !ok {
+		f = func(w http.ResponseWriter, r *http.Request) {
+			h.ServeHTTP(w, r)
+		}
+	}
+	mux.Handle("GET", "/color", f)
+}
+
+// NewColorHandler creates a HTTP handler which loads the HTTP request and
+// calls the "schedule" service "color" endpoint.
+func NewColorHandler(
+	endpoint goa.Endpoint,
+	mux goahttp.Muxer,
+	dec func(*http.Request) goahttp.Decoder,
+	enc func(context.Context, http.ResponseWriter) goahttp.Encoder,
+	eh func(context.Context, http.ResponseWriter, error),
+) http.Handler {
+	var (
+		encodeResponse = EncodeColorResponse(enc)
+		encodeError    = goahttp.ErrorEncoder(enc)
+	)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
+		ctx = context.WithValue(ctx, goa.MethodKey, "color")
+		ctx = context.WithValue(ctx, goa.ServiceKey, "schedule")
+
+		res, err := endpoint(ctx, nil)
+
+		if err != nil {
+			if err := encodeError(ctx, w, err); err != nil {
+				eh(ctx, w, err)
+			}
+			return
+		}
+		if err := encodeResponse(ctx, w, res); err != nil {
+			eh(ctx, w, err)
+		}
+	})
+}
+
+// MountSoundHandler configures the mux to serve the "schedule" service "sound"
+// endpoint.
+func MountSoundHandler(mux goahttp.Muxer, h http.Handler) {
+	f, ok := h.(http.HandlerFunc)
+	if !ok {
+		f = func(w http.ResponseWriter, r *http.Request) {
+			h.ServeHTTP(w, r)
+		}
+	}
+	mux.Handle("POST", "/sound", f)
+}
+
+// NewSoundHandler creates a HTTP handler which loads the HTTP request and
+// calls the "schedule" service "sound" endpoint.
+func NewSoundHandler(
+	endpoint goa.Endpoint,
+	mux goahttp.Muxer,
+	dec func(*http.Request) goahttp.Decoder,
+	enc func(context.Context, http.ResponseWriter) goahttp.Encoder,
+	eh func(context.Context, http.ResponseWriter, error),
+) http.Handler {
+	var (
+		decodeRequest  = DecodeSoundRequest(mux, dec)
+		encodeResponse = EncodeSoundResponse(enc)
+		encodeError    = goahttp.ErrorEncoder(enc)
+	)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctx := context.WithValue(r.Context(), goahttp.AcceptTypeKey, r.Header.Get("Accept"))
+		ctx = context.WithValue(ctx, goa.MethodKey, "sound")
+		ctx = context.WithValue(ctx, goa.ServiceKey, "schedule")
+		payload, err := decodeRequest(r)
+		if err != nil {
+			eh(ctx, w, err)
+			return
+		}
+
+		res, err := endpoint(ctx, payload)
+
+		if err != nil {
+			if err := encodeError(ctx, w, err); err != nil {
+				eh(ctx, w, err)
+			}
+			return
+		}
+		if err := encodeResponse(ctx, w, res); err != nil {
+			eh(ctx, w, err)
+		}
+	})
+}
+
 // MountStaticFaviconIco configures the mux to serve GET request made to
 // "/favicon.ico".
 func MountStaticFaviconIco(mux goahttp.Muxer, h http.Handler) {
 	mux.Handle("GET", "/favicon.ico", h.ServeHTTP)
 }
 
-// MountStatic configures the mux to serve GET request made to
-// "/static/*filename".
+// MountStatic configures the mux to serve GET request made to "/static".
 func MountStatic(mux goahttp.Muxer, h http.Handler) {
+	mux.Handle("GET", "/static/", h.ServeHTTP)
 	mux.Handle("GET", "/static/*filename", h.ServeHTTP)
+}
+
+// MountStaticIndexHTML configures the mux to serve GET request made to "/home".
+func MountStaticIndexHTML(mux goahttp.Muxer, h http.Handler) {
+	mux.Handle("GET", "/home", h.ServeHTTP)
 }

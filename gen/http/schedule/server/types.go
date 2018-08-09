@@ -11,83 +11,135 @@ import (
 	"unicode/utf8"
 
 	schedule "github.com/jaredwarren/rg/gen/schedule"
-	scheduleviews "github.com/jaredwarren/rg/gen/schedule/views"
 	goa "goa.design/goa"
 )
 
-// ScheduleRequestBody is the type of the "schedule" service "schedule"
-// endpoint HTTP request body.
-type ScheduleRequestBody struct {
-	// ID is the unique id of the schedule.
-	ID *string `form:"id,omitempty" json:"id,omitempty" xml:"id,omitempty"`
+// CreateRequestBody is the type of the "schedule" service "create" endpoint
+// HTTP request body.
+type CreateRequestBody struct {
 	// Descriptive Name
 	Name *string `form:"name,omitempty" json:"name,omitempty" xml:"name,omitempty"`
 	// Valid cron string
 	Cron *string `form:"cron,omitempty" json:"cron,omitempty" xml:"cron,omitempty"`
 	// color to set
 	Color *string `form:"color,omitempty" json:"color,omitempty" xml:"color,omitempty"`
+	// next time
+	Next *string `form:"next,omitempty" json:"next,omitempty" xml:"next,omitempty"`
+	// sound on/off
+	Sound *bool `form:"sound,omitempty" json:"sound,omitempty" xml:"sound,omitempty"`
 }
 
-// SchedulePayloadResponseBodyCollection is the type of the "schedule" service
-// "list" endpoint HTTP response body.
-type SchedulePayloadResponseBodyCollection []*SchedulePayloadResponseBody
-
-// ScheduleResponseBody is the type of the "schedule" service "schedule"
-// endpoint HTTP response body.
-type ScheduleResponseBody struct {
-	// Descriptive Name
-	Name *string `form:"name,omitempty" json:"name,omitempty" xml:"name,omitempty"`
-	// Valid cron string
-	Cron string `form:"cron" json:"cron" xml:"cron"`
+// UpdateRequestBody is the type of the "schedule" service "update" endpoint
+// HTTP request body.
+type UpdateRequestBody struct {
 	// color to set
-	Color string `form:"color" json:"color" xml:"color"`
+	Color *string `form:"color,omitempty" json:"color,omitempty" xml:"color,omitempty"`
 }
 
-// SchedulePayloadResponseBody is used to define fields on response body types.
-type SchedulePayloadResponseBody struct {
+// SoundRequestBody is the type of the "schedule" service "sound" endpoint HTTP
+// request body.
+type SoundRequestBody struct {
+	// sound on/off
+	Sound *bool `form:"sound,omitempty" json:"sound,omitempty" xml:"sound,omitempty"`
+}
+
+// CreateResponseBody is the type of the "schedule" service "create" endpoint
+// HTTP response body.
+type CreateResponseBody struct {
 	// ID is the unique id of the schedule.
 	ID string `form:"id" json:"id" xml:"id"`
 	// Descriptive Name
-	Name string `form:"name" json:"name" xml:"name"`
+	Name string `form:"name,omitempty" json:"name,omitempty" xml:"name,omitempty"`
 	// Valid cron string
 	Cron string `form:"cron" json:"cron" xml:"cron"`
 	// color to set
 	Color string `form:"color" json:"color" xml:"color"`
+	// sound on/off
+	Sound bool `form:"sound" json:"sound" xml:"sound"`
+	// next time
+	Next string `form:"next,omitempty" json:"next,omitempty" xml:"next,omitempty"`
 }
 
-// NewSchedulePayloadResponseBodyCollection builds the HTTP response body from
-// the result of the "list" endpoint of the "schedule" service.
-func NewSchedulePayloadResponseBodyCollection(res scheduleviews.SchedulePayloadCollectionView) SchedulePayloadResponseBodyCollection {
-	body := make([]*SchedulePayloadResponseBody, len(res))
+// ColorResponseBody is the type of the "schedule" service "color" endpoint
+// HTTP response body.
+type ColorResponseBody struct {
+	// color to set
+	Color string `form:"color" json:"color" xml:"color"`
+}
+
+// ScheduleResponseBody is used to define fields on response body types.
+type ScheduleResponseBody struct {
+	// ID is the unique id of the schedule.
+	ID string `form:"id" json:"id" xml:"id"`
+	// Descriptive Name
+	Name string `form:"name,omitempty" json:"name,omitempty" xml:"name,omitempty"`
+	// Valid cron string
+	Cron string `form:"cron" json:"cron" xml:"cron"`
+	// color to set
+	Color string `form:"color" json:"color" xml:"color"`
+	// sound on/off
+	Sound bool `form:"sound" json:"sound" xml:"sound"`
+	// next time
+	Next string `form:"next,omitempty" json:"next,omitempty" xml:"next,omitempty"`
+}
+
+// NewScheduleResponseBody builds the HTTP response body from the result of the
+// "list" endpoint of the "schedule" service.
+func NewScheduleResponseBody(res []*schedule.Schedule) []*ScheduleResponseBody {
+	body := make([]*ScheduleResponseBody, len(res))
 	for i, val := range res {
-		body[i] = &SchedulePayloadResponseBody{
-			ID:    *val.ID,
-			Name:  *val.Name,
-			Cron:  *val.Cron,
-			Color: *val.Color,
+		body[i] = &ScheduleResponseBody{
+			ID:    val.ID,
+			Name:  val.Name,
+			Cron:  val.Cron,
+			Color: val.Color,
+			Sound: val.Sound,
+			Next:  val.Next,
 		}
 	}
 	return body
 }
 
-// NewScheduleResponseBody builds the HTTP response body from the result of the
-// "schedule" endpoint of the "schedule" service.
-func NewScheduleResponseBody(res *schedule.Schedule) *ScheduleResponseBody {
-	body := &ScheduleResponseBody{
+// NewCreateResponseBody builds the HTTP response body from the result of the
+// "create" endpoint of the "schedule" service.
+func NewCreateResponseBody(res *schedule.Schedule) *CreateResponseBody {
+	body := &CreateResponseBody{
+		ID:    res.ID,
 		Name:  res.Name,
 		Cron:  res.Cron,
+		Color: res.Color,
+		Sound: res.Sound,
+		Next:  res.Next,
+	}
+	return body
+}
+
+// NewColorResponseBody builds the HTTP response body from the result of the
+// "color" endpoint of the "schedule" service.
+func NewColorResponseBody(res *schedule.Color) *ColorResponseBody {
+	body := &ColorResponseBody{
 		Color: res.Color,
 	}
 	return body
 }
 
-// NewSchedulePayload builds a schedule service schedule endpoint payload.
-func NewSchedulePayload(body *ScheduleRequestBody) *schedule.SchedulePayload {
+// NewCreateSchedulePayload builds a schedule service create endpoint payload.
+func NewCreateSchedulePayload(body *CreateRequestBody) *schedule.SchedulePayload {
 	v := &schedule.SchedulePayload{
-		ID:    *body.ID,
 		Name:  *body.Name,
 		Cron:  *body.Cron,
 		Color: *body.Color,
+		Next:  *body.Next,
+		Sound: *body.Sound,
+	}
+	if body.Name == nil {
+		v.Name = ""
+	}
+	if body.Next == nil {
+		v.Next = ""
+	}
+	if body.Sound == nil {
+		v.Sound = true
 	}
 	return v
 }
@@ -99,11 +151,27 @@ func NewRemovePayload(id string) *schedule.RemovePayload {
 	}
 }
 
-// Validate runs the validations defined on ScheduleRequestBody
-func (body *ScheduleRequestBody) Validate() (err error) {
-	if body.ID == nil {
-		err = goa.MergeErrors(err, goa.MissingFieldError("id", "body"))
+// NewUpdatePayload builds a schedule service update endpoint payload.
+func NewUpdatePayload(body *UpdateRequestBody) *schedule.UpdatePayload {
+	v := &schedule.UpdatePayload{
+		Color: *body.Color,
 	}
+	return v
+}
+
+// NewSoundPayload builds a schedule service sound endpoint payload.
+func NewSoundPayload(body *SoundRequestBody) *schedule.SoundPayload {
+	v := &schedule.SoundPayload{
+		Sound: *body.Sound,
+	}
+	if body.Sound == nil {
+		v.Sound = true
+	}
+	return v
+}
+
+// Validate runs the validations defined on CreateRequestBody
+func (body *CreateRequestBody) Validate() (err error) {
 	if body.Name == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("name", "body"))
 	}
@@ -112,6 +180,12 @@ func (body *ScheduleRequestBody) Validate() (err error) {
 	}
 	if body.Color == nil {
 		err = goa.MergeErrors(err, goa.MissingFieldError("color", "body"))
+	}
+	if body.Sound == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("sound", "body"))
+	}
+	if body.Next == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("next", "body"))
 	}
 	if body.Name != nil {
 		if utf8.RuneCountInString(*body.Name) > 100 {
@@ -126,8 +200,29 @@ func (body *ScheduleRequestBody) Validate() (err error) {
 	return
 }
 
-// Validate runs the validations defined on SchedulePayloadResponseBody
-func (body *SchedulePayloadResponseBody) Validate() (err error) {
+// Validate runs the validations defined on UpdateRequestBody
+func (body *UpdateRequestBody) Validate() (err error) {
+	if body.Color == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("color", "body"))
+	}
+	if body.Color != nil {
+		if !(*body.Color == "red" || *body.Color == "yellow" || *body.Color == "green" || *body.Color == "off") {
+			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.color", *body.Color, []interface{}{"red", "yellow", "green", "off"}))
+		}
+	}
+	return
+}
+
+// Validate runs the validations defined on SoundRequestBody
+func (body *SoundRequestBody) Validate() (err error) {
+	if body.Sound == nil {
+		err = goa.MergeErrors(err, goa.MissingFieldError("sound", "body"))
+	}
+	return
+}
+
+// Validate runs the validations defined on ScheduleResponseBody
+func (body *ScheduleResponseBody) Validate() (err error) {
 	if utf8.RuneCountInString(body.Name) > 100 {
 		err = goa.MergeErrors(err, goa.InvalidLengthError("body.name", body.Name, utf8.RuneCountInString(body.Name), 100, false))
 	}

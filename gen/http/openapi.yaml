@@ -5,33 +5,36 @@ info:
   version: ""
 host: localhost:8080
 paths:
-  /:
+  /color:
     get:
       tags:
       - schedule
-      summary: list schedule
-      description: List all stored bottles
-      operationId: schedule#list
+      summary: color schedule
+      description: Remove cron schedule
+      operationId: schedule#color
       responses:
         "200":
           description: OK response.
           schema:
-            $ref: '#/definitions/ScheduleSchedulePayloadResponseBodyCollection'
+            $ref: '#/definitions/ColorResponseBody'
+            required:
+            - color
       schemes:
       - http
-  /{id}:
-    delete:
+    post:
       tags:
       - schedule
-      summary: remove schedule
+      summary: update schedule
       description: Remove cron schedule
-      operationId: schedule#remove
+      operationId: schedule#update
       parameters:
-      - name: id
-        in: path
-        description: ID of bottle to remove
+      - name: UpdateRequestBody
+        in: body
         required: true
-        type: string
+        schema:
+          $ref: '#/definitions/ScheduleUpdateRequestBody'
+          required:
+          - color
       responses:
         "204":
           description: No Content response.
@@ -48,38 +51,10 @@ paths:
             type: file
       schemes:
       - http
-  /schedule:
-    post:
-      tags:
-      - schedule
-      summary: schedule schedule
-      description: create new cron schedule
-      operationId: schedule#schedule
-      parameters:
-      - name: ScheduleRequestBody
-        in: body
-        required: true
-        schema:
-          $ref: '#/definitions/ScheduleScheduleRequestBody'
-          required:
-          - id
-          - name
-          - cron
-          - color
-      responses:
-        "201":
-          description: Created response.
-          schema:
-            $ref: '#/definitions/ScheduleResponseBody'
-            required:
-            - color
-            - cron
-      schemes:
-      - http
-  /static/*filename:
+  /home:
     get:
-      summary: Download static/
-      operationId: schedule#/static/*filename
+      summary: Download static/index.html
+      operationId: schedule#/home
       responses:
         "200":
           description: File downloaded
@@ -87,99 +62,131 @@ paths:
             type: file
       schemes:
       - http
+  /schedule:
+    get:
+      tags:
+      - schedule
+      summary: list schedule
+      description: List all stored bottles
+      operationId: schedule#list
+      responses:
+        "200":
+          description: OK response.
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/ScheduleResponseBody'
+      schemes:
+      - http
+    post:
+      tags:
+      - schedule
+      summary: create schedule
+      description: create new cron schedule
+      operationId: schedule#create
+      parameters:
+      - name: CreateRequestBody
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/ScheduleCreateRequestBody'
+          required:
+          - name
+          - cron
+          - color
+          - sound
+          - next
+          - id
+      responses:
+        "201":
+          description: Created response.
+          schema:
+            $ref: '#/definitions/CreateResponseBody'
+            required:
+            - id
+            - color
+            - cron
+            - sound
+      schemes:
+      - http
+  /schedule/{id}:
+    delete:
+      tags:
+      - schedule
+      summary: remove schedule
+      description: Remove cron schedule
+      operationId: schedule#remove
+      parameters:
+      - name: id
+        in: path
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content response.
+      schemes:
+      - http
+  /sound:
+    post:
+      tags:
+      - schedule
+      summary: sound schedule
+      description: Remove cron schedule
+      operationId: schedule#sound
+      parameters:
+      - name: SoundRequestBody
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/ScheduleSoundRequestBody'
+          required:
+          - sound
+      responses:
+        "204":
+          description: No Content response.
+      schemes:
+      - http
+  /static/{*filename}}:
+    get:
+      summary: Download static/
+      operationId: schedule#/static/{*filename}
+      parameters:
+      - name: filename
+        in: path
+        description: Relative file path
+        required: true
+        type: string
+      responses:
+        "200":
+          description: File downloaded
+          schema:
+            type: file
+        "404":
+          description: File not found
+          schema:
+            $ref: '#/definitions/error'
+      schemes:
+      - http
 definitions:
-  SchedulePayloadResponseBody:
-    title: 'Mediatype identifier: application/vnd.rg.schedule; view=default'
+  ColorResponseBody:
+    title: ColorResponseBody
     type: object
     properties:
       color:
         type: string
         description: color to set
-        example: yellow
+        example: green
         enum:
         - red
         - yellow
         - green
         - "off"
-      cron:
-        type: string
-        description: Valid cron string
-        example: 30 6 * * 1-5
-      id:
-        type: string
-        description: ID is the unique id of the schedule.
-        example: sched_21345
-      name:
-        type: string
-        description: Descriptive Name
-        example: Week Days at 6:30am
-        maxLength: 100
-    description: A SchedulePayload describes a cron schedule payload. (default view)
     example:
-      color: green
-      cron: 30 6 * * 1-5
-      id: sched_21345
-      name: Week Days at 6:30am
-    required:
-    - id
-    - name
-    - cron
-    - color
-  ScheduleResponseBody:
-    title: ScheduleResponseBody
-    type: object
-    properties:
-      color:
-        type: string
-        description: color to set
-        example: yellow
-        enum:
-        - red
-        - yellow
-        - green
-        - "off"
-      cron:
-        type: string
-        description: Valid cron string
-        example: 30 6 * * 1-5
-      name:
-        type: string
-        description: Descriptive Name
-        example: Week Days at 6:30am
-        maxLength: 100
-    example:
-      color: "off"
-      cron: 30 6 * * 1-5
-      name: Week Days at 6:30am
+      color: yellow
     required:
     - color
-    - cron
-  ScheduleSchedulePayloadResponseBodyCollection:
-    title: 'Mediatype identifier: application/vnd.rg.schedule; type=collection; view=default'
-    type: array
-    items:
-      $ref: '#/definitions/SchedulePayloadResponseBody'
-    description: ListResponseBody is the result type for an array of SchedulePayloadResponseBody
-      (default view)
-    example:
-    - color: yellow
-      cron: 30 6 * * 1-5
-      id: sched_21345
-      name: Week Days at 6:30am
-    - color: yellow
-      cron: 30 6 * * 1-5
-      id: sched_21345
-      name: Week Days at 6:30am
-    - color: yellow
-      cron: 30 6 * * 1-5
-      id: sched_21345
-      name: Week Days at 6:30am
-    - color: yellow
-      cron: 30 6 * * 1-5
-      id: sched_21345
-      name: Week Days at 6:30am
-  ScheduleScheduleRequestBody:
-    title: ScheduleScheduleRequestBody
+  CreateResponseBody:
+    title: CreateResponseBody
     type: object
     properties:
       color:
@@ -198,19 +205,203 @@ definitions:
       id:
         type: string
         description: ID is the unique id of the schedule.
-        example: sched_21345
+        example: schedule_21345
       name:
         type: string
         description: Descriptive Name
+        default: ""
         example: Week Days at 6:30am
         maxLength: 100
+      next:
+        type: string
+        description: next time
+        default: ""
+        example: ""
+      sound:
+        type: boolean
+        description: sound on/off
+        default: true
+        example: true
     example:
-      color: green
+      color: "off"
       cron: 30 6 * * 1-5
-      id: sched_21345
+      id: schedule_21345
       name: Week Days at 6:30am
+      next: ""
+      sound: false
     required:
     - id
+    - color
+    - cron
+    - sound
+  ScheduleCreateRequestBody:
+    title: ScheduleCreateRequestBody
+    type: object
+    properties:
+      color:
+        type: string
+        description: color to set
+        example: red
+        enum:
+        - red
+        - yellow
+        - green
+        - "off"
+      cron:
+        type: string
+        description: Valid cron string
+        example: 30 6 * * 1-5
+      name:
+        type: string
+        description: Descriptive Name
+        default: ""
+        example: Week Days at 6:30am
+        maxLength: 100
+      next:
+        type: string
+        description: next time
+        default: ""
+        example: ""
+      sound:
+        type: boolean
+        description: sound on/off
+        default: true
+        example: true
+    example:
+      color: yellow
+      cron: 30 6 * * 1-5
+      name: Week Days at 6:30am
+      next: ""
+      sound: false
+    required:
     - name
     - cron
     - color
+    - sound
+    - next
+    - id
+  ScheduleResponseBody:
+    title: ScheduleResponseBody
+    type: object
+    properties:
+      color:
+        type: string
+        description: color to set
+        example: red
+        enum:
+        - red
+        - yellow
+        - green
+        - "off"
+      cron:
+        type: string
+        description: Valid cron string
+        example: 30 6 * * 1-5
+      id:
+        type: string
+        description: ID is the unique id of the schedule.
+        example: schedule_21345
+      name:
+        type: string
+        description: Descriptive Name
+        default: ""
+        example: Week Days at 6:30am
+        maxLength: 100
+      next:
+        type: string
+        description: next time
+        default: ""
+        example: ""
+      sound:
+        type: boolean
+        description: sound on/off
+        default: true
+        example: false
+    description: Schedule describes a cron schedule.
+    example:
+      color: green
+      cron: 30 6 * * 1-5
+      id: schedule_21345
+      name: Week Days at 6:30am
+      next: ""
+      sound: false
+    required:
+    - id
+    - color
+    - cron
+    - sound
+  ScheduleSoundRequestBody:
+    title: ScheduleSoundRequestBody
+    type: object
+    properties:
+      sound:
+        type: boolean
+        description: sound on/off
+        default: true
+        example: false
+    example:
+      sound: true
+    required:
+    - sound
+  ScheduleUpdateRequestBody:
+    title: ScheduleUpdateRequestBody
+    type: object
+    properties:
+      color:
+        type: string
+        description: color to set
+        example: "off"
+        enum:
+        - red
+        - yellow
+        - green
+        - "off"
+    example:
+      color: yellow
+    required:
+    - color
+  error:
+    title: 'Mediatype identifier: application/vnd.goa.error; view=default'
+    type: object
+    properties:
+      fault:
+        type: boolean
+        description: Is the error a server-side fault?
+        example: false
+      id:
+        type: string
+        description: ID is a unique identifier for this particular occurrence of the
+          problem.
+        example: 123abc
+      message:
+        type: string
+        description: Message is a human-readable explanation specific to this occurrence
+          of the problem.
+        example: parameter 'p' must be an integer
+      name:
+        type: string
+        description: Name is the name of this class of errors.
+        example: bad_request
+      temporary:
+        type: boolean
+        description: Is the error temporary?
+        example: false
+      timeout:
+        type: boolean
+        description: Is the error a timeout?
+        example: true
+    description: Error response result type (default view)
+    example:
+      fault: true
+      id: 123abc
+      message: parameter 'p' must be an integer
+      name: bad_request
+      temporary: false
+      timeout: true
+    required:
+    - name
+    - id
+    - message
+    - temporary
+    - timeout
+    - fault

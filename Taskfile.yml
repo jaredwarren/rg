@@ -16,17 +16,23 @@ tasks:
     cmds: 
       - goa example github.com/jaredwarren/rg/design
   # usage examples
+  home:
+    cmds:  
+    - |
+      curl -i \
+      --request GET \
+      http://localhost:8080/home
   list:
     cmds:  
     - |
       curl --header "Content-Type: application/json" \
       --request GET \
-      http://localhost:8080/
+      http://localhost:8080/schedule
   create:
     desc: "create cron schedule"
     cmds:  
     - |
-      curl --header "Content-Type: application/json" \
+      curl -L --header "Content-Type: application/json" \
       --request POST \
       --data '{"name":"{{.name}}","cron":"{{.cron}}","color":"{{.color}}"}' \
       http://localhost:8080/schedule
@@ -35,4 +41,18 @@ tasks:
     - |
       curl --header "Content-Type: application/json" \
       --request DELETE \
-      http://localhost:8080/{{.id}}
+      http://localhost:8080/schedule/{{.id}}
+  #Color
+  set:
+    cmds:  
+    - |
+      curl -L --header "Content-Type: application/json" \
+      --request POST \
+      --data '{"color":"{{.color}}"}' \
+      http://localhost:8080/color
+  get:
+    cmds:  
+    - |
+      curl -L --header "Content-Type: application/json" \
+      --request GET \
+      http://localhost:8080/color

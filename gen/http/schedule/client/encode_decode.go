@@ -15,51 +15,9 @@ import (
 	"net/url"
 
 	schedule "github.com/jaredwarren/rg/gen/schedule"
-	scheduleviews "github.com/jaredwarren/rg/gen/schedule/views"
+	goa "goa.design/goa"
 	goahttp "goa.design/goa/http"
 )
-
-// BuildHomeRequest instantiates a HTTP request object with method and path set
-// to call the "schedule" service "home" endpoint
-func (c *Client) BuildHomeRequest(ctx context.Context, v interface{}) (*http.Request, error) {
-	u := &url.URL{Scheme: c.scheme, Host: c.host, Path: HomeSchedulePath()}
-	req, err := http.NewRequest("GET", u.String(), nil)
-	if err != nil {
-		return nil, goahttp.ErrInvalidURL("schedule", "home", u.String(), err)
-	}
-	if ctx != nil {
-		req = req.WithContext(ctx)
-	}
-
-	return req, nil
-}
-
-// DecodeHomeResponse returns a decoder for responses returned by the schedule
-// home endpoint. restoreBody controls whether the response body should be
-// restored after having been read.
-func DecodeHomeResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (interface{}, error) {
-	return func(resp *http.Response) (interface{}, error) {
-		if restoreBody {
-			b, err := ioutil.ReadAll(resp.Body)
-			if err != nil {
-				return nil, err
-			}
-			resp.Body = ioutil.NopCloser(bytes.NewBuffer(b))
-			defer func() {
-				resp.Body = ioutil.NopCloser(bytes.NewBuffer(b))
-			}()
-		} else {
-			defer resp.Body.Close()
-		}
-		switch resp.StatusCode {
-		case http.StatusOK:
-			return nil, nil
-		default:
-			body, _ := ioutil.ReadAll(resp.Body)
-			return nil, goahttp.ErrInvalidResponse("schedule", "home", resp.StatusCode, string(body))
-		}
-	}
-}
 
 // BuildListRequest instantiates a HTTP request object with method and path set
 // to call the "schedule" service "list" endpoint
@@ -96,20 +54,24 @@ func DecodeListResponse(decoder func(*http.Response) goahttp.Decoder, restoreBod
 		switch resp.StatusCode {
 		case http.StatusOK:
 			var (
-				body ListResponseBody
+				body []*ScheduleResponseBody
 				err  error
 			)
 			err = decoder(resp).Decode(&body)
 			if err != nil {
 				return nil, goahttp.ErrDecodingError("schedule", "list", err)
 			}
-			p := NewListSchedulePayloadCollectionOK(body)
-			view := "default"
-			vres := scheduleviews.SchedulePayloadCollection{p, view}
-			if err = vres.Validate(); err != nil {
+			for _, e := range body {
+				if e != nil {
+					if err2 := e.Validate(); err2 != nil {
+						err = goa.MergeErrors(err, err2)
+					}
+				}
+			}
+			if err != nil {
 				return nil, goahttp.ErrValidationError("schedule", "list", err)
 			}
-			return schedule.NewSchedulePayloadCollection(vres), nil
+			return NewListScheduleOK(body), nil
 		default:
 			body, _ := ioutil.ReadAll(resp.Body)
 			return nil, goahttp.ErrInvalidResponse("schedule", "list", resp.StatusCode, string(body))
@@ -117,13 +79,13 @@ func DecodeListResponse(decoder func(*http.Response) goahttp.Decoder, restoreBod
 	}
 }
 
-// BuildScheduleRequest instantiates a HTTP request object with method and path
-// set to call the "schedule" service "schedule" endpoint
-func (c *Client) BuildScheduleRequest(ctx context.Context, v interface{}) (*http.Request, error) {
-	u := &url.URL{Scheme: c.scheme, Host: c.host, Path: ScheduleSchedulePath()}
+// BuildCreateRequest instantiates a HTTP request object with method and path
+// set to call the "schedule" service "create" endpoint
+func (c *Client) BuildCreateRequest(ctx context.Context, v interface{}) (*http.Request, error) {
+	u := &url.URL{Scheme: c.scheme, Host: c.host, Path: CreateSchedulePath()}
 	req, err := http.NewRequest("POST", u.String(), nil)
 	if err != nil {
-		return nil, goahttp.ErrInvalidURL("schedule", "schedule", u.String(), err)
+		return nil, goahttp.ErrInvalidURL("schedule", "create", u.String(), err)
 	}
 	if ctx != nil {
 		req = req.WithContext(ctx)
@@ -132,26 +94,26 @@ func (c *Client) BuildScheduleRequest(ctx context.Context, v interface{}) (*http
 	return req, nil
 }
 
-// EncodeScheduleRequest returns an encoder for requests sent to the schedule
-// schedule server.
-func EncodeScheduleRequest(encoder func(*http.Request) goahttp.Encoder) func(*http.Request, interface{}) error {
+// EncodeCreateRequest returns an encoder for requests sent to the schedule
+// create server.
+func EncodeCreateRequest(encoder func(*http.Request) goahttp.Encoder) func(*http.Request, interface{}) error {
 	return func(req *http.Request, v interface{}) error {
 		p, ok := v.(*schedule.SchedulePayload)
 		if !ok {
-			return goahttp.ErrInvalidType("schedule", "schedule", "*schedule.SchedulePayload", v)
+			return goahttp.ErrInvalidType("schedule", "create", "*schedule.SchedulePayload", v)
 		}
-		body := NewScheduleRequestBody(p)
+		body := NewCreateRequestBody(p)
 		if err := encoder(req).Encode(&body); err != nil {
-			return goahttp.ErrEncodingError("schedule", "schedule", err)
+			return goahttp.ErrEncodingError("schedule", "create", err)
 		}
 		return nil
 	}
 }
 
-// DecodeScheduleResponse returns a decoder for responses returned by the
-// schedule schedule endpoint. restoreBody controls whether the response body
+// DecodeCreateResponse returns a decoder for responses returned by the
+// schedule create endpoint. restoreBody controls whether the response body
 // should be restored after having been read.
-func DecodeScheduleResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (interface{}, error) {
+func DecodeCreateResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (interface{}, error) {
 	return func(resp *http.Response) (interface{}, error) {
 		if restoreBody {
 			b, err := ioutil.ReadAll(resp.Body)
@@ -168,21 +130,21 @@ func DecodeScheduleResponse(decoder func(*http.Response) goahttp.Decoder, restor
 		switch resp.StatusCode {
 		case http.StatusCreated:
 			var (
-				body ScheduleResponseBody
+				body CreateResponseBody
 				err  error
 			)
 			err = decoder(resp).Decode(&body)
 			if err != nil {
-				return nil, goahttp.ErrDecodingError("schedule", "schedule", err)
+				return nil, goahttp.ErrDecodingError("schedule", "create", err)
 			}
 			err = body.Validate()
 			if err != nil {
-				return nil, goahttp.ErrValidationError("schedule", "schedule", err)
+				return nil, goahttp.ErrValidationError("schedule", "create", err)
 			}
-			return NewScheduleCreated(&body), nil
+			return NewCreateScheduleCreated(&body), nil
 		default:
 			body, _ := ioutil.ReadAll(resp.Body)
-			return nil, goahttp.ErrInvalidResponse("schedule", "schedule", resp.StatusCode, string(body))
+			return nil, goahttp.ErrInvalidResponse("schedule", "create", resp.StatusCode, string(body))
 		}
 	}
 }
@@ -235,6 +197,176 @@ func DecodeRemoveResponse(decoder func(*http.Response) goahttp.Decoder, restoreB
 		default:
 			body, _ := ioutil.ReadAll(resp.Body)
 			return nil, goahttp.ErrInvalidResponse("schedule", "remove", resp.StatusCode, string(body))
+		}
+	}
+}
+
+// BuildUpdateRequest instantiates a HTTP request object with method and path
+// set to call the "schedule" service "update" endpoint
+func (c *Client) BuildUpdateRequest(ctx context.Context, v interface{}) (*http.Request, error) {
+	u := &url.URL{Scheme: c.scheme, Host: c.host, Path: UpdateSchedulePath()}
+	req, err := http.NewRequest("POST", u.String(), nil)
+	if err != nil {
+		return nil, goahttp.ErrInvalidURL("schedule", "update", u.String(), err)
+	}
+	if ctx != nil {
+		req = req.WithContext(ctx)
+	}
+
+	return req, nil
+}
+
+// EncodeUpdateRequest returns an encoder for requests sent to the schedule
+// update server.
+func EncodeUpdateRequest(encoder func(*http.Request) goahttp.Encoder) func(*http.Request, interface{}) error {
+	return func(req *http.Request, v interface{}) error {
+		p, ok := v.(*schedule.UpdatePayload)
+		if !ok {
+			return goahttp.ErrInvalidType("schedule", "update", "*schedule.UpdatePayload", v)
+		}
+		body := NewUpdateRequestBody(p)
+		if err := encoder(req).Encode(&body); err != nil {
+			return goahttp.ErrEncodingError("schedule", "update", err)
+		}
+		return nil
+	}
+}
+
+// DecodeUpdateResponse returns a decoder for responses returned by the
+// schedule update endpoint. restoreBody controls whether the response body
+// should be restored after having been read.
+func DecodeUpdateResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (interface{}, error) {
+	return func(resp *http.Response) (interface{}, error) {
+		if restoreBody {
+			b, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return nil, err
+			}
+			resp.Body = ioutil.NopCloser(bytes.NewBuffer(b))
+			defer func() {
+				resp.Body = ioutil.NopCloser(bytes.NewBuffer(b))
+			}()
+		} else {
+			defer resp.Body.Close()
+		}
+		switch resp.StatusCode {
+		case http.StatusNoContent:
+			return nil, nil
+		default:
+			body, _ := ioutil.ReadAll(resp.Body)
+			return nil, goahttp.ErrInvalidResponse("schedule", "update", resp.StatusCode, string(body))
+		}
+	}
+}
+
+// BuildColorRequest instantiates a HTTP request object with method and path
+// set to call the "schedule" service "color" endpoint
+func (c *Client) BuildColorRequest(ctx context.Context, v interface{}) (*http.Request, error) {
+	u := &url.URL{Scheme: c.scheme, Host: c.host, Path: ColorSchedulePath()}
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return nil, goahttp.ErrInvalidURL("schedule", "color", u.String(), err)
+	}
+	if ctx != nil {
+		req = req.WithContext(ctx)
+	}
+
+	return req, nil
+}
+
+// DecodeColorResponse returns a decoder for responses returned by the schedule
+// color endpoint. restoreBody controls whether the response body should be
+// restored after having been read.
+func DecodeColorResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (interface{}, error) {
+	return func(resp *http.Response) (interface{}, error) {
+		if restoreBody {
+			b, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return nil, err
+			}
+			resp.Body = ioutil.NopCloser(bytes.NewBuffer(b))
+			defer func() {
+				resp.Body = ioutil.NopCloser(bytes.NewBuffer(b))
+			}()
+		} else {
+			defer resp.Body.Close()
+		}
+		switch resp.StatusCode {
+		case http.StatusOK:
+			var (
+				body ColorResponseBody
+				err  error
+			)
+			err = decoder(resp).Decode(&body)
+			if err != nil {
+				return nil, goahttp.ErrDecodingError("schedule", "color", err)
+			}
+			err = body.Validate()
+			if err != nil {
+				return nil, goahttp.ErrValidationError("schedule", "color", err)
+			}
+			return NewColorOK(&body), nil
+		default:
+			body, _ := ioutil.ReadAll(resp.Body)
+			return nil, goahttp.ErrInvalidResponse("schedule", "color", resp.StatusCode, string(body))
+		}
+	}
+}
+
+// BuildSoundRequest instantiates a HTTP request object with method and path
+// set to call the "schedule" service "sound" endpoint
+func (c *Client) BuildSoundRequest(ctx context.Context, v interface{}) (*http.Request, error) {
+	u := &url.URL{Scheme: c.scheme, Host: c.host, Path: SoundSchedulePath()}
+	req, err := http.NewRequest("POST", u.String(), nil)
+	if err != nil {
+		return nil, goahttp.ErrInvalidURL("schedule", "sound", u.String(), err)
+	}
+	if ctx != nil {
+		req = req.WithContext(ctx)
+	}
+
+	return req, nil
+}
+
+// EncodeSoundRequest returns an encoder for requests sent to the schedule
+// sound server.
+func EncodeSoundRequest(encoder func(*http.Request) goahttp.Encoder) func(*http.Request, interface{}) error {
+	return func(req *http.Request, v interface{}) error {
+		p, ok := v.(*schedule.SoundPayload)
+		if !ok {
+			return goahttp.ErrInvalidType("schedule", "sound", "*schedule.SoundPayload", v)
+		}
+		body := NewSoundRequestBody(p)
+		if err := encoder(req).Encode(&body); err != nil {
+			return goahttp.ErrEncodingError("schedule", "sound", err)
+		}
+		return nil
+	}
+}
+
+// DecodeSoundResponse returns a decoder for responses returned by the schedule
+// sound endpoint. restoreBody controls whether the response body should be
+// restored after having been read.
+func DecodeSoundResponse(decoder func(*http.Response) goahttp.Decoder, restoreBody bool) func(*http.Response) (interface{}, error) {
+	return func(resp *http.Response) (interface{}, error) {
+		if restoreBody {
+			b, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				return nil, err
+			}
+			resp.Body = ioutil.NopCloser(bytes.NewBuffer(b))
+			defer func() {
+				resp.Body = ioutil.NopCloser(bytes.NewBuffer(b))
+			}()
+		} else {
+			defer resp.Body.Close()
+		}
+		switch resp.StatusCode {
+		case http.StatusNoContent:
+			return nil, nil
+		default:
+			body, _ := ioutil.ReadAll(resp.Body)
+			return nil, goahttp.ErrInvalidResponse("schedule", "sound", resp.StatusCode, string(body))
 		}
 	}
 }

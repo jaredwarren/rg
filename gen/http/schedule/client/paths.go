@@ -11,22 +11,32 @@ import (
 	"fmt"
 )
 
-// HomeSchedulePath returns the URL path to the schedule service home HTTP endpoint.
-func HomeSchedulePath() string {
-	return "/"
-}
-
 // ListSchedulePath returns the URL path to the schedule service list HTTP endpoint.
 func ListSchedulePath() string {
-	return "/"
+	return "/schedule"
 }
 
-// ScheduleSchedulePath returns the URL path to the schedule service schedule HTTP endpoint.
-func ScheduleSchedulePath() string {
+// CreateSchedulePath returns the URL path to the schedule service create HTTP endpoint.
+func CreateSchedulePath() string {
 	return "/schedule"
 }
 
 // RemoveSchedulePath returns the URL path to the schedule service remove HTTP endpoint.
 func RemoveSchedulePath(id string) string {
-	return fmt.Sprintf("/%v", id)
+	return fmt.Sprintf("/schedule/%v", id)
+}
+
+// UpdateSchedulePath returns the URL path to the schedule service update HTTP endpoint.
+func UpdateSchedulePath() string {
+	return "/color"
+}
+
+// ColorSchedulePath returns the URL path to the schedule service color HTTP endpoint.
+func ColorSchedulePath() string {
+	return "/color"
+}
+
+// SoundSchedulePath returns the URL path to the schedule service sound HTTP endpoint.
+func SoundSchedulePath() string {
+	return "/sound"
 }

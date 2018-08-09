@@ -15,42 +15,40 @@ import (
 
 // Client is the "schedule" service client.
 type Client struct {
-	HomeEndpoint     goa.Endpoint
-	ListEndpoint     goa.Endpoint
-	ScheduleEndpoint goa.Endpoint
-	RemoveEndpoint   goa.Endpoint
+	ListEndpoint   goa.Endpoint
+	CreateEndpoint goa.Endpoint
+	RemoveEndpoint goa.Endpoint
+	UpdateEndpoint goa.Endpoint
+	ColorEndpoint  goa.Endpoint
+	SoundEndpoint  goa.Endpoint
 }
 
 // NewClient initializes a "schedule" service client given the endpoints.
-func NewClient(home, list, schedule, remove goa.Endpoint) *Client {
+func NewClient(list, create, remove, update, color, sound goa.Endpoint) *Client {
 	return &Client{
-		HomeEndpoint:     home,
-		ListEndpoint:     list,
-		ScheduleEndpoint: schedule,
-		RemoveEndpoint:   remove,
+		ListEndpoint:   list,
+		CreateEndpoint: create,
+		RemoveEndpoint: remove,
+		UpdateEndpoint: update,
+		ColorEndpoint:  color,
+		SoundEndpoint:  sound,
 	}
 }
 
-// Home calls the "home" endpoint of the "schedule" service.
-func (c *Client) Home(ctx context.Context) (err error) {
-	_, err = c.HomeEndpoint(ctx, nil)
-	return
-}
-
 // List calls the "list" endpoint of the "schedule" service.
-func (c *Client) List(ctx context.Context) (res SchedulePayloadCollection, err error) {
+func (c *Client) List(ctx context.Context) (res []*Schedule, err error) {
 	var ires interface{}
 	ires, err = c.ListEndpoint(ctx, nil)
 	if err != nil {
 		return
 	}
-	return ires.(SchedulePayloadCollection), nil
+	return ires.([]*Schedule), nil
 }
 
-// Schedule calls the "schedule" endpoint of the "schedule" service.
-func (c *Client) Schedule(ctx context.Context, p *SchedulePayload) (res *Schedule, err error) {
+// Create calls the "create" endpoint of the "schedule" service.
+func (c *Client) Create(ctx context.Context, p *SchedulePayload) (res *Schedule, err error) {
 	var ires interface{}
-	ires, err = c.ScheduleEndpoint(ctx, p)
+	ires, err = c.CreateEndpoint(ctx, p)
 	if err != nil {
 		return
 	}
@@ -63,5 +61,27 @@ func (c *Client) Schedule(ctx context.Context, p *SchedulePayload) (res *Schedul
 //	- error: internal error
 func (c *Client) Remove(ctx context.Context, p *RemovePayload) (err error) {
 	_, err = c.RemoveEndpoint(ctx, p)
+	return
+}
+
+// Update calls the "update" endpoint of the "schedule" service.
+func (c *Client) Update(ctx context.Context, p *UpdatePayload) (err error) {
+	_, err = c.UpdateEndpoint(ctx, p)
+	return
+}
+
+// Color calls the "color" endpoint of the "schedule" service.
+func (c *Client) Color(ctx context.Context) (res *Color, err error) {
+	var ires interface{}
+	ires, err = c.ColorEndpoint(ctx, nil)
+	if err != nil {
+		return
+	}
+	return ires.(*Color), nil
+}
+
+// Sound calls the "sound" endpoint of the "schedule" service.
+func (c *Client) Sound(ctx context.Context, p *SoundPayload) (err error) {
+	_, err = c.SoundEndpoint(ctx, p)
 	return
 }

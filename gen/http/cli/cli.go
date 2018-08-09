@@ -23,13 +23,13 @@ import (
 //    command (subcommand1|subcommand2|...)
 //
 func UsageCommands() string {
-	return `schedule (home|list|schedule|remove)
+	return `schedule (list|create|remove|update|color|sound)
 `
 }
 
 // UsageExamples produces an example of a valid invocation of the CLI tool.
 func UsageExamples() string {
-	return os.Args[0] + ` schedule home` + "\n" +
+	return os.Args[0] + ` schedule list` + "\n" +
 		""
 }
 
@@ -45,21 +45,29 @@ func ParseEndpoint(
 	var (
 		scheduleFlags = flag.NewFlagSet("schedule", flag.ContinueOnError)
 
-		scheduleHomeFlags = flag.NewFlagSet("home", flag.ExitOnError)
-
 		scheduleListFlags = flag.NewFlagSet("list", flag.ExitOnError)
 
-		scheduleScheduleFlags    = flag.NewFlagSet("schedule", flag.ExitOnError)
-		scheduleScheduleBodyFlag = scheduleScheduleFlags.String("body", "REQUIRED", "")
+		scheduleCreateFlags    = flag.NewFlagSet("create", flag.ExitOnError)
+		scheduleCreateBodyFlag = scheduleCreateFlags.String("body", "REQUIRED", "")
 
 		scheduleRemoveFlags  = flag.NewFlagSet("remove", flag.ExitOnError)
-		scheduleRemoveIDFlag = scheduleRemoveFlags.String("id", "REQUIRED", "ID of bottle to remove")
+		scheduleRemoveIDFlag = scheduleRemoveFlags.String("id", "REQUIRED", "")
+
+		scheduleUpdateFlags    = flag.NewFlagSet("update", flag.ExitOnError)
+		scheduleUpdateBodyFlag = scheduleUpdateFlags.String("body", "REQUIRED", "")
+
+		scheduleColorFlags = flag.NewFlagSet("color", flag.ExitOnError)
+
+		scheduleSoundFlags    = flag.NewFlagSet("sound", flag.ExitOnError)
+		scheduleSoundBodyFlag = scheduleSoundFlags.String("body", "REQUIRED", "")
 	)
 	scheduleFlags.Usage = scheduleUsage
-	scheduleHomeFlags.Usage = scheduleHomeUsage
 	scheduleListFlags.Usage = scheduleListUsage
-	scheduleScheduleFlags.Usage = scheduleScheduleUsage
+	scheduleCreateFlags.Usage = scheduleCreateUsage
 	scheduleRemoveFlags.Usage = scheduleRemoveUsage
+	scheduleUpdateFlags.Usage = scheduleUpdateUsage
+	scheduleColorFlags.Usage = scheduleColorUsage
+	scheduleSoundFlags.Usage = scheduleSoundUsage
 
 	if err := flag.CommandLine.Parse(os.Args[1:]); err != nil {
 		return nil, nil, err
@@ -95,17 +103,23 @@ func ParseEndpoint(
 		switch svcn {
 		case "schedule":
 			switch epn {
-			case "home":
-				epf = scheduleHomeFlags
-
 			case "list":
 				epf = scheduleListFlags
 
-			case "schedule":
-				epf = scheduleScheduleFlags
+			case "create":
+				epf = scheduleCreateFlags
 
 			case "remove":
 				epf = scheduleRemoveFlags
+
+			case "update":
+				epf = scheduleUpdateFlags
+
+			case "color":
+				epf = scheduleColorFlags
+
+			case "sound":
+				epf = scheduleSoundFlags
 
 			}
 
@@ -132,18 +146,24 @@ func ParseEndpoint(
 		case "schedule":
 			c := schedulec.NewClient(scheme, host, doer, enc, dec, restore)
 			switch epn {
-			case "home":
-				endpoint = c.Home()
-				data = nil
 			case "list":
 				endpoint = c.List()
 				data = nil
-			case "schedule":
-				endpoint = c.Schedule()
-				data, err = schedulec.BuildSchedulePayload(*scheduleScheduleBodyFlag)
+			case "create":
+				endpoint = c.Create()
+				data, err = schedulec.BuildCreatePayload(*scheduleCreateBodyFlag)
 			case "remove":
 				endpoint = c.Remove()
 				data, err = schedulec.BuildRemovePayload(*scheduleRemoveIDFlag)
+			case "update":
+				endpoint = c.Update()
+				data, err = schedulec.BuildUpdatePayload(*scheduleUpdateBodyFlag)
+			case "color":
+				endpoint = c.Color()
+				data = nil
+			case "sound":
+				endpoint = c.Sound()
+				data, err = schedulec.BuildSoundPayload(*scheduleSoundBodyFlag)
 			}
 		}
 	}
@@ -161,25 +181,17 @@ Usage:
     %s [globalflags] schedule COMMAND [flags]
 
 COMMAND:
-    home: Alarm Schedule Home
     list: List all stored bottles
-    schedule: create new cron schedule
+    create: create new cron schedule
     remove: Remove cron schedule
+    update: Remove cron schedule
+    color: Remove cron schedule
+    sound: Remove cron schedule
 
 Additional help:
     %s schedule COMMAND --help
 `, os.Args[0], os.Args[0])
 }
-func scheduleHomeUsage() {
-	fmt.Fprintf(os.Stderr, `%s [flags] schedule home
-
-Alarm Schedule Home
-
-Example:
-    `+os.Args[0]+` schedule home
-`, os.Args[0])
-}
-
 func scheduleListUsage() {
 	fmt.Fprintf(os.Stderr, `%s [flags] schedule list
 
@@ -190,18 +202,19 @@ Example:
 `, os.Args[0])
 }
 
-func scheduleScheduleUsage() {
-	fmt.Fprintf(os.Stderr, `%s [flags] schedule schedule -body JSON
+func scheduleCreateUsage() {
+	fmt.Fprintf(os.Stderr, `%s [flags] schedule create -body JSON
 
 create new cron schedule
     -body JSON: 
 
 Example:
-    `+os.Args[0]+` schedule schedule --body '{
-      "color": "red",
+    `+os.Args[0]+` schedule create --body '{
+      "color": "off",
       "cron": "30 6 * * 1-5",
-      "id": "sched_21345",
-      "name": "Week Days at 6:30am"
+      "name": "Week Days at 6:30am",
+      "next": "",
+      "sound": false
    }'
 `, os.Args[0])
 }
@@ -210,9 +223,45 @@ func scheduleRemoveUsage() {
 	fmt.Fprintf(os.Stderr, `%s [flags] schedule remove -id STRING
 
 Remove cron schedule
-    -id STRING: ID of bottle to remove
+    -id STRING: 
 
 Example:
-    `+os.Args[0]+` schedule remove --id "Nostrum excepturi."
+    `+os.Args[0]+` schedule remove --id "Nihil similique beatae ratione et quo aut."
+`, os.Args[0])
+}
+
+func scheduleUpdateUsage() {
+	fmt.Fprintf(os.Stderr, `%s [flags] schedule update -body JSON
+
+Remove cron schedule
+    -body JSON: 
+
+Example:
+    `+os.Args[0]+` schedule update --body '{
+      "color": "off"
+   }'
+`, os.Args[0])
+}
+
+func scheduleColorUsage() {
+	fmt.Fprintf(os.Stderr, `%s [flags] schedule color
+
+Remove cron schedule
+
+Example:
+    `+os.Args[0]+` schedule color
+`, os.Args[0])
+}
+
+func scheduleSoundUsage() {
+	fmt.Fprintf(os.Stderr, `%s [flags] schedule sound -body JSON
+
+Remove cron schedule
+    -body JSON: 
+
+Example:
+    `+os.Args[0]+` schedule sound --body '{
+      "sound": false
+   }'
 `, os.Args[0])
 }

@@ -16,15 +16,15 @@ import (
 	goa "goa.design/goa"
 )
 
-// BuildSchedulePayload builds the payload for the schedule schedule endpoint
-// from CLI flags.
-func BuildSchedulePayload(scheduleScheduleBody string) (*schedule.SchedulePayload, error) {
+// BuildCreatePayload builds the payload for the schedule create endpoint from
+// CLI flags.
+func BuildCreatePayload(scheduleCreateBody string) (*schedule.SchedulePayload, error) {
 	var err error
-	var body ScheduleRequestBody
+	var body CreateRequestBody
 	{
-		err = json.Unmarshal([]byte(scheduleScheduleBody), &body)
+		err = json.Unmarshal([]byte(scheduleCreateBody), &body)
 		if err != nil {
-			return nil, fmt.Errorf("invalid JSON for body, example of valid JSON:\n%s", "'{\n      \"color\": \"red\",\n      \"cron\": \"30 6 * * 1-5\",\n      \"id\": \"sched_21345\",\n      \"name\": \"Week Days at 6:30am\"\n   }'")
+			return nil, fmt.Errorf("invalid JSON for body, example of valid JSON:\n%s", "'{\n      \"color\": \"off\",\n      \"cron\": \"30 6 * * 1-5\",\n      \"name\": \"Week Days at 6:30am\",\n      \"next\": \"\",\n      \"sound\": false\n   }'")
 		}
 		if utf8.RuneCountInString(body.Name) > 100 {
 			err = goa.MergeErrors(err, goa.InvalidLengthError("body.name", body.Name, utf8.RuneCountInString(body.Name), 100, false))
@@ -40,10 +40,11 @@ func BuildSchedulePayload(scheduleScheduleBody string) (*schedule.SchedulePayloa
 		return nil, err
 	}
 	v := &schedule.SchedulePayload{
-		ID:    body.ID,
 		Name:  body.Name,
 		Cron:  body.Cron,
 		Color: body.Color,
+		Next:  body.Next,
+		Sound: body.Sound,
 	}
 	return v, nil
 }
@@ -59,4 +60,50 @@ func BuildRemovePayload(scheduleRemoveID string) (*schedule.RemovePayload, error
 		ID: id,
 	}
 	return payload, nil
+}
+
+// BuildUpdatePayload builds the payload for the schedule update endpoint from
+// CLI flags.
+func BuildUpdatePayload(scheduleUpdateBody string) (*schedule.UpdatePayload, error) {
+	var err error
+	var body UpdateRequestBody
+	{
+		err = json.Unmarshal([]byte(scheduleUpdateBody), &body)
+		if err != nil {
+			return nil, fmt.Errorf("invalid JSON for body, example of valid JSON:\n%s", "'{\n      \"color\": \"off\"\n   }'")
+		}
+		if !(body.Color == "red" || body.Color == "yellow" || body.Color == "green" || body.Color == "off") {
+			err = goa.MergeErrors(err, goa.InvalidEnumValueError("body.color", body.Color, []interface{}{"red", "yellow", "green", "off"}))
+		}
+		if err != nil {
+			return nil, err
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	v := &schedule.UpdatePayload{
+		Color: body.Color,
+	}
+	return v, nil
+}
+
+// BuildSoundPayload builds the payload for the schedule sound endpoint from
+// CLI flags.
+func BuildSoundPayload(scheduleSoundBody string) (*schedule.SoundPayload, error) {
+	var err error
+	var body SoundRequestBody
+	{
+		err = json.Unmarshal([]byte(scheduleSoundBody), &body)
+		if err != nil {
+			return nil, fmt.Errorf("invalid JSON for body, example of valid JSON:\n%s", "'{\n      \"sound\": false\n   }'")
+		}
+	}
+	if err != nil {
+		return nil, err
+	}
+	v := &schedule.SoundPayload{
+		Sound: body.Sound,
+	}
+	return v, nil
 }

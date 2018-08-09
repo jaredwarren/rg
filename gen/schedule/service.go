@@ -9,20 +9,22 @@ package schedule
 
 import (
 	"context"
-
-	scheduleviews "github.com/jaredwarren/rg/gen/schedule/views"
 )
 
 // The Alarm schedule service.
 type Service interface {
-	// Alarm Schedule Home
-	Home(context.Context) (err error)
 	// List all stored bottles
-	List(context.Context) (res SchedulePayloadCollection, err error)
+	List(context.Context) (res []*Schedule, err error)
 	// create new cron schedule
-	Schedule(context.Context, *SchedulePayload) (res *Schedule, err error)
+	Create(context.Context, *SchedulePayload) (res *Schedule, err error)
 	// Remove cron schedule
 	Remove(context.Context, *RemovePayload) (err error)
+	// Remove cron schedule
+	Update(context.Context, *UpdatePayload) (err error)
+	// Remove cron schedule
+	Color(context.Context) (res *Color, err error)
+	// Remove cron schedule
+	Sound(context.Context, *SoundPayload) (err error)
 }
 
 // ServiceName is the name of the service as defined in the design. This is the
@@ -33,14 +35,24 @@ const ServiceName = "schedule"
 // MethodNames lists the service method names as defined in the design. These
 // are the same values that are set in the endpoint request contexts under the
 // MethodKey key.
-var MethodNames = [4]string{"home", "list", "schedule", "remove"}
+var MethodNames = [6]string{"list", "create", "remove", "update", "color", "sound"}
 
-// SchedulePayloadCollection is the result type of the schedule service list
-// method.
-type SchedulePayloadCollection []*SchedulePayload
-
-// SchedulePayload is the payload type of the schedule service schedule method.
+// SchedulePayload is the payload type of the schedule service create method.
 type SchedulePayload struct {
+	// Descriptive Name
+	Name string
+	// Valid cron string
+	Cron string
+	// color to set
+	Color string
+	// next time
+	Next string
+	// sound on/off
+	Sound bool
+}
+
+// Schedule is the result type of the schedule service create method.
+type Schedule struct {
 	// ID is the unique id of the schedule.
 	ID string
 	// Descriptive Name
@@ -49,22 +61,33 @@ type SchedulePayload struct {
 	Cron string
 	// color to set
 	Color string
-}
-
-// Schedule is the result type of the schedule service schedule method.
-type Schedule struct {
-	// Descriptive Name
-	Name *string
-	// Valid cron string
-	Cron string
-	// color to set
-	Color string
+	// sound on/off
+	Sound bool
+	// next time
+	Next string
 }
 
 // RemovePayload is the payload type of the schedule service remove method.
 type RemovePayload struct {
-	// ID of bottle to remove
 	ID string
+}
+
+// UpdatePayload is the payload type of the schedule service update method.
+type UpdatePayload struct {
+	// color to set
+	Color string
+}
+
+// Color is the result type of the schedule service color method.
+type Color struct {
+	// color to set
+	Color string
+}
+
+// SoundPayload is the payload type of the schedule service sound method.
+type SoundPayload struct {
+	// sound on/off
+	Sound bool
 }
 
 // NotFound is the type returned when attempting to show or delete a bottle
@@ -84,80 +107,4 @@ func (e *NotFound) Error() string {
 // ErrorName returns "NotFound".
 func (e *NotFound) ErrorName() string {
 	return e.Message
-}
-
-// NewSchedulePayloadCollection initializes result type
-// SchedulePayloadCollection from viewed result type SchedulePayloadCollection.
-func NewSchedulePayloadCollection(vres scheduleviews.SchedulePayloadCollection) SchedulePayloadCollection {
-	var res SchedulePayloadCollection
-	switch vres.View {
-	case "default", "":
-		res = newSchedulePayloadCollection(vres.Projected)
-	}
-	return res
-}
-
-// NewViewedSchedulePayloadCollection initializes viewed result type
-// SchedulePayloadCollection from result type SchedulePayloadCollection using
-// the given view.
-func NewViewedSchedulePayloadCollection(res SchedulePayloadCollection, view string) scheduleviews.SchedulePayloadCollection {
-	var vres scheduleviews.SchedulePayloadCollection
-	switch view {
-	case "default", "":
-		p := newSchedulePayloadCollectionView(res)
-		vres = scheduleviews.SchedulePayloadCollection{p, "default"}
-	}
-	return vres
-}
-
-// newSchedulePayloadCollection converts projected type
-// SchedulePayloadCollection to service type SchedulePayloadCollection.
-func newSchedulePayloadCollection(vres scheduleviews.SchedulePayloadCollectionView) SchedulePayloadCollection {
-	res := make(SchedulePayloadCollection, len(vres))
-	for i, n := range vres {
-		res[i] = newSchedulePayload(n)
-	}
-	return res
-}
-
-// newSchedulePayloadCollectionView projects result type
-// SchedulePayloadCollection into projected type SchedulePayloadCollectionView
-// using the "default" view.
-func newSchedulePayloadCollectionView(res SchedulePayloadCollection) scheduleviews.SchedulePayloadCollectionView {
-	vres := make(scheduleviews.SchedulePayloadCollectionView, len(res))
-	for i, n := range res {
-		vres[i] = newSchedulePayloadView(n)
-	}
-	return vres
-}
-
-// newSchedulePayload converts projected type SchedulePayload to service type
-// SchedulePayload.
-func newSchedulePayload(vres *scheduleviews.SchedulePayloadView) *SchedulePayload {
-	res := &SchedulePayload{}
-	if vres.ID != nil {
-		res.ID = *vres.ID
-	}
-	if vres.Name != nil {
-		res.Name = *vres.Name
-	}
-	if vres.Cron != nil {
-		res.Cron = *vres.Cron
-	}
-	if vres.Color != nil {
-		res.Color = *vres.Color
-	}
-	return res
-}
-
-// newSchedulePayloadView projects result type SchedulePayload into projected
-// type SchedulePayloadView using the "default" view.
-func newSchedulePayloadView(res *SchedulePayload) *scheduleviews.SchedulePayloadView {
-	vres := &scheduleviews.SchedulePayloadView{
-		ID:    &res.ID,
-		Name:  &res.Name,
-		Cron:  &res.Cron,
-		Color: &res.Color,
-	}
-	return vres
 }

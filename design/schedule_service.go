@@ -11,31 +11,22 @@ var _ = Service("schedule", func() {
 
 	// HTML
 
-	Method("home", func() {
-		Description("Alarm Schedule Home")
-		// Result(CollectionOf(Game))
-		HTTP(func() {
-			GET("/")
-			// Response(StatusOK, "text/html")
-			Response(StatusOK)
-		})
-	})
-
 	Files("/favicon.ico", "static/favicon.ico")
-	Files("/static/*filename", "static/")
+	Files("/static/{*filename}", "static/")
+	Files("/home/", "static/index.html")
 
 	// JSON
 
 	Method("list", func() {
 		Description("List all stored bottles")
-		Result(CollectionOf(SchedulePayload))
+		Result(ArrayOf(Schedule))
 		HTTP(func() {
-			GET("/")
+			GET("/schedule")
 			Response(StatusOK)
 		})
 	})
 
-	Method("schedule", func() {
+	Method("create", func() {
 		Description("create new cron schedule")
 		Result(Schedule)
 		Payload(SchedulePayload)
@@ -48,12 +39,49 @@ var _ = Service("schedule", func() {
 	Method("remove", func() {
 		Description("Remove cron schedule")
 		Payload(func() {
-			Attribute("id", String, "ID of bottle to remove")
+			Attribute("id", String, "")
 			Required("id")
 		})
 		Error("not_found", NotFound, "Bottle not found")
 		HTTP(func() {
-			DELETE("/{id}")
+			DELETE("/schedule/{id}")
+			Response(StatusNoContent)
+		})
+	})
+
+	Method("update", func() {
+		Description("Remove cron schedule")
+		Payload(func() {
+			Attribute("color", String, "color to set", func() {
+				Enum("red", "yellow", "green", "off")
+			})
+			Required("color")
+		})
+		HTTP(func() {
+			POST("/color")
+			Response(StatusNoContent)
+		})
+	})
+
+	Method("color", func() {
+		Description("Remove cron schedule")
+		Result(Color)
+		HTTP(func() {
+			GET("/color")
+			Response(StatusOK)
+		})
+	})
+
+	Method("sound", func() {
+		Description("Remove cron schedule")
+		Payload(func() {
+			Attribute("sound", Boolean, "sound on/off", func() {
+				Default(true)
+			})
+			Required("sound")
+		})
+		HTTP(func() {
+			POST("/sound")
 			Response(StatusNoContent)
 		})
 	})
@@ -67,22 +95,33 @@ var SchedulePayload = ResultType("application/vnd.rg.schedule", func() {
 	TypeName("SchedulePayload")
 
 	Attributes(func() {
-		Attribute("id", String, "ID is the unique id of the schedule.", func() {
-			Example("sched_21345")
-		})
 		Attribute("name")
 		Attribute("cron")
 		Attribute("color")
+		Attribute("next")
+		Attribute("sound")
+	})
+	View("default", func() {
+		// Attribute("id")
+		Attribute("name")
+		Attribute("cron")
+		Attribute("color")
+		Attribute("next")
+		Attribute("sound")
 	})
 
-	Required("id", "name", "cron", "color")
+	Required("name", "cron", "color", "sound", "next")
 })
 
 // Schedule describes a cron schedule.
 var Schedule = Type("Schedule", func() {
 	Description("Schedule describes a cron schedule.")
+	Attribute("id", String, "ID is the unique id of the schedule.", func() {
+		Example("schedule_21345")
+	})
 	Attribute("name", String, "Descriptive Name", func() {
 		MaxLength(100)
+		Default("")
 		Example("Week Days at 6:30am")
 	})
 	Attribute("cron", String, "Valid cron string", func() {
@@ -93,5 +132,25 @@ var Schedule = Type("Schedule", func() {
 		Enum("red", "yellow", "green", "off")
 	})
 
-	Required("color", "cron")
+	Attribute("sound", Boolean, "sound on/off", func() {
+		Default(true)
+	})
+
+	Attribute("next", String, "next time", func() {
+		Example("") // Week Days at 6:30am
+		Default("")
+	})
+
+	Required("id", "color", "cron", "sound")
+})
+
+// Color current state.
+var Color = Type("Color", func() {
+	Description("Color current state.")
+
+	Attribute("color", String, "color to set", func() {
+		Enum("red", "yellow", "green", "off")
+	})
+
+	Required("color")
 })

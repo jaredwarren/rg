@@ -17,18 +17,23 @@ import (
 
 // Client lists the schedule service endpoint HTTP clients.
 type Client struct {
-	// Home Doer is the HTTP client used to make requests to the home endpoint.
-	HomeDoer goahttp.Doer
-
 	// List Doer is the HTTP client used to make requests to the list endpoint.
 	ListDoer goahttp.Doer
 
-	// Schedule Doer is the HTTP client used to make requests to the schedule
-	// endpoint.
-	ScheduleDoer goahttp.Doer
+	// Create Doer is the HTTP client used to make requests to the create endpoint.
+	CreateDoer goahttp.Doer
 
 	// Remove Doer is the HTTP client used to make requests to the remove endpoint.
 	RemoveDoer goahttp.Doer
+
+	// Update Doer is the HTTP client used to make requests to the update endpoint.
+	UpdateDoer goahttp.Doer
+
+	// Color Doer is the HTTP client used to make requests to the color endpoint.
+	ColorDoer goahttp.Doer
+
+	// Sound Doer is the HTTP client used to make requests to the sound endpoint.
+	SoundDoer goahttp.Doer
 
 	// RestoreResponseBody controls whether the response bodies are reset after
 	// decoding so they can be read again.
@@ -50,35 +55,17 @@ func NewClient(
 	restoreBody bool,
 ) *Client {
 	return &Client{
-		HomeDoer:            doer,
 		ListDoer:            doer,
-		ScheduleDoer:        doer,
+		CreateDoer:          doer,
 		RemoveDoer:          doer,
+		UpdateDoer:          doer,
+		ColorDoer:           doer,
+		SoundDoer:           doer,
 		RestoreResponseBody: restoreBody,
 		scheme:              scheme,
 		host:                host,
 		decoder:             dec,
 		encoder:             enc,
-	}
-}
-
-// Home returns an endpoint that makes HTTP requests to the schedule service
-// home server.
-func (c *Client) Home() goa.Endpoint {
-	var (
-		decodeResponse = DecodeHomeResponse(c.decoder, c.RestoreResponseBody)
-	)
-	return func(ctx context.Context, v interface{}) (interface{}, error) {
-		req, err := c.BuildHomeRequest(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-		resp, err := c.HomeDoer.Do(req)
-
-		if err != nil {
-			return nil, goahttp.ErrRequestError("schedule", "home", err)
-		}
-		return decodeResponse(resp)
 	}
 }
 
@@ -102,15 +89,15 @@ func (c *Client) List() goa.Endpoint {
 	}
 }
 
-// Schedule returns an endpoint that makes HTTP requests to the schedule
-// service schedule server.
-func (c *Client) Schedule() goa.Endpoint {
+// Create returns an endpoint that makes HTTP requests to the schedule service
+// create server.
+func (c *Client) Create() goa.Endpoint {
 	var (
-		encodeRequest  = EncodeScheduleRequest(c.encoder)
-		decodeResponse = DecodeScheduleResponse(c.decoder, c.RestoreResponseBody)
+		encodeRequest  = EncodeCreateRequest(c.encoder)
+		decodeResponse = DecodeCreateResponse(c.decoder, c.RestoreResponseBody)
 	)
 	return func(ctx context.Context, v interface{}) (interface{}, error) {
-		req, err := c.BuildScheduleRequest(ctx, v)
+		req, err := c.BuildCreateRequest(ctx, v)
 		if err != nil {
 			return nil, err
 		}
@@ -118,10 +105,10 @@ func (c *Client) Schedule() goa.Endpoint {
 		if err != nil {
 			return nil, err
 		}
-		resp, err := c.ScheduleDoer.Do(req)
+		resp, err := c.CreateDoer.Do(req)
 
 		if err != nil {
-			return nil, goahttp.ErrRequestError("schedule", "schedule", err)
+			return nil, goahttp.ErrRequestError("schedule", "create", err)
 		}
 		return decodeResponse(resp)
 	}
@@ -142,6 +129,76 @@ func (c *Client) Remove() goa.Endpoint {
 
 		if err != nil {
 			return nil, goahttp.ErrRequestError("schedule", "remove", err)
+		}
+		return decodeResponse(resp)
+	}
+}
+
+// Update returns an endpoint that makes HTTP requests to the schedule service
+// update server.
+func (c *Client) Update() goa.Endpoint {
+	var (
+		encodeRequest  = EncodeUpdateRequest(c.encoder)
+		decodeResponse = DecodeUpdateResponse(c.decoder, c.RestoreResponseBody)
+	)
+	return func(ctx context.Context, v interface{}) (interface{}, error) {
+		req, err := c.BuildUpdateRequest(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+		err = encodeRequest(req, v)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := c.UpdateDoer.Do(req)
+
+		if err != nil {
+			return nil, goahttp.ErrRequestError("schedule", "update", err)
+		}
+		return decodeResponse(resp)
+	}
+}
+
+// Color returns an endpoint that makes HTTP requests to the schedule service
+// color server.
+func (c *Client) Color() goa.Endpoint {
+	var (
+		decodeResponse = DecodeColorResponse(c.decoder, c.RestoreResponseBody)
+	)
+	return func(ctx context.Context, v interface{}) (interface{}, error) {
+		req, err := c.BuildColorRequest(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := c.ColorDoer.Do(req)
+
+		if err != nil {
+			return nil, goahttp.ErrRequestError("schedule", "color", err)
+		}
+		return decodeResponse(resp)
+	}
+}
+
+// Sound returns an endpoint that makes HTTP requests to the schedule service
+// sound server.
+func (c *Client) Sound() goa.Endpoint {
+	var (
+		encodeRequest  = EncodeSoundRequest(c.encoder)
+		decodeResponse = DecodeSoundResponse(c.decoder, c.RestoreResponseBody)
+	)
+	return func(ctx context.Context, v interface{}) (interface{}, error) {
+		req, err := c.BuildSoundRequest(ctx, v)
+		if err != nil {
+			return nil, err
+		}
+		err = encodeRequest(req, v)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := c.SoundDoer.Do(req)
+
+		if err != nil {
+			return nil, goahttp.ErrRequestError("schedule", "sound", err)
 		}
 		return decodeResponse(resp)
 	}

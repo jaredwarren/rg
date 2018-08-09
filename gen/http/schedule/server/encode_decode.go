@@ -13,50 +13,40 @@ import (
 	"net/http"
 
 	schedule "github.com/jaredwarren/rg/gen/schedule"
-	scheduleviews "github.com/jaredwarren/rg/gen/schedule/views"
 	goa "goa.design/goa"
 	goahttp "goa.design/goa/http"
 )
-
-// EncodeHomeResponse returns an encoder for responses returned by the schedule
-// home endpoint.
-func EncodeHomeResponse(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, interface{}) error {
-	return func(ctx context.Context, w http.ResponseWriter, v interface{}) error {
-		w.WriteHeader(http.StatusOK)
-		return nil
-	}
-}
 
 // EncodeListResponse returns an encoder for responses returned by the schedule
 // list endpoint.
 func EncodeListResponse(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, interface{}) error {
 	return func(ctx context.Context, w http.ResponseWriter, v interface{}) error {
-		res := v.(scheduleviews.SchedulePayloadCollection)
+		res := v.([]*schedule.Schedule)
 		enc := encoder(ctx, w)
-		body := NewSchedulePayloadResponseBodyCollection(res.Projected)
+		body := NewScheduleResponseBody(res)
 		w.WriteHeader(http.StatusOK)
 		return enc.Encode(body)
 	}
 }
 
-// EncodeScheduleResponse returns an encoder for responses returned by the
-// schedule schedule endpoint.
-func EncodeScheduleResponse(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, interface{}) error {
+// EncodeCreateResponse returns an encoder for responses returned by the
+// schedule create endpoint.
+func EncodeCreateResponse(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, interface{}) error {
 	return func(ctx context.Context, w http.ResponseWriter, v interface{}) error {
 		res := v.(*schedule.Schedule)
 		enc := encoder(ctx, w)
-		body := NewScheduleResponseBody(res)
+		body := NewCreateResponseBody(res)
 		w.WriteHeader(http.StatusCreated)
 		return enc.Encode(body)
 	}
 }
 
-// DecodeScheduleRequest returns a decoder for requests sent to the schedule
-// schedule endpoint.
-func DecodeScheduleRequest(mux goahttp.Muxer, decoder func(*http.Request) goahttp.Decoder) func(*http.Request) (interface{}, error) {
+// DecodeCreateRequest returns a decoder for requests sent to the schedule
+// create endpoint.
+func DecodeCreateRequest(mux goahttp.Muxer, decoder func(*http.Request) goahttp.Decoder) func(*http.Request) (interface{}, error) {
 	return func(r *http.Request) (interface{}, error) {
 		var (
-			body ScheduleRequestBody
+			body CreateRequestBody
 			err  error
 		)
 		err = decoder(r).Decode(&body)
@@ -70,7 +60,7 @@ func DecodeScheduleRequest(mux goahttp.Muxer, decoder func(*http.Request) goahtt
 		if err != nil {
 			return nil, err
 		}
-		payload := NewSchedulePayload(&body)
+		payload := NewCreateSchedulePayload(&body)
 
 		return payload, nil
 	}
@@ -96,6 +86,86 @@ func DecodeRemoveRequest(mux goahttp.Muxer, decoder func(*http.Request) goahttp.
 		)
 		id = params["id"]
 		payload := NewRemovePayload(id)
+
+		return payload, nil
+	}
+}
+
+// EncodeUpdateResponse returns an encoder for responses returned by the
+// schedule update endpoint.
+func EncodeUpdateResponse(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, interface{}) error {
+	return func(ctx context.Context, w http.ResponseWriter, v interface{}) error {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
+}
+
+// DecodeUpdateRequest returns a decoder for requests sent to the schedule
+// update endpoint.
+func DecodeUpdateRequest(mux goahttp.Muxer, decoder func(*http.Request) goahttp.Decoder) func(*http.Request) (interface{}, error) {
+	return func(r *http.Request) (interface{}, error) {
+		var (
+			body UpdateRequestBody
+			err  error
+		)
+		err = decoder(r).Decode(&body)
+		if err != nil {
+			if err == io.EOF {
+				return nil, goa.MissingPayloadError()
+			}
+			return nil, goa.DecodePayloadError(err.Error())
+		}
+		err = body.Validate()
+		if err != nil {
+			return nil, err
+		}
+		payload := NewUpdatePayload(&body)
+
+		return payload, nil
+	}
+}
+
+// EncodeColorResponse returns an encoder for responses returned by the
+// schedule color endpoint.
+func EncodeColorResponse(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, interface{}) error {
+	return func(ctx context.Context, w http.ResponseWriter, v interface{}) error {
+		res := v.(*schedule.Color)
+		enc := encoder(ctx, w)
+		body := NewColorResponseBody(res)
+		w.WriteHeader(http.StatusOK)
+		return enc.Encode(body)
+	}
+}
+
+// EncodeSoundResponse returns an encoder for responses returned by the
+// schedule sound endpoint.
+func EncodeSoundResponse(encoder func(context.Context, http.ResponseWriter) goahttp.Encoder) func(context.Context, http.ResponseWriter, interface{}) error {
+	return func(ctx context.Context, w http.ResponseWriter, v interface{}) error {
+		w.WriteHeader(http.StatusNoContent)
+		return nil
+	}
+}
+
+// DecodeSoundRequest returns a decoder for requests sent to the schedule sound
+// endpoint.
+func DecodeSoundRequest(mux goahttp.Muxer, decoder func(*http.Request) goahttp.Decoder) func(*http.Request) (interface{}, error) {
+	return func(r *http.Request) (interface{}, error) {
+		var (
+			body SoundRequestBody
+			err  error
+		)
+		err = decoder(r).Decode(&body)
+		if err != nil {
+			if err == io.EOF {
+				return nil, goa.MissingPayloadError()
+			}
+			return nil, goa.DecodePayloadError(err.Error())
+		}
+		err = body.Validate()
+		if err != nil {
+			return nil, err
+		}
+		payload := NewSoundPayload(&body)
 
 		return payload, nil
 	}

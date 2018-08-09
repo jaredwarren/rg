@@ -15,57 +15,50 @@ import (
 
 // Endpoints wraps the "schedule" service endpoints.
 type Endpoints struct {
-	Home     goa.Endpoint
-	List     goa.Endpoint
-	Schedule goa.Endpoint
-	Remove   goa.Endpoint
+	List   goa.Endpoint
+	Create goa.Endpoint
+	Remove goa.Endpoint
+	Update goa.Endpoint
+	Color  goa.Endpoint
+	Sound  goa.Endpoint
 }
 
 // NewEndpoints wraps the methods of the "schedule" service with endpoints.
 func NewEndpoints(s Service) *Endpoints {
 	return &Endpoints{
-		Home:     NewHomeEndpoint(s),
-		List:     NewListEndpoint(s),
-		Schedule: NewScheduleEndpoint(s),
-		Remove:   NewRemoveEndpoint(s),
+		List:   NewListEndpoint(s),
+		Create: NewCreateEndpoint(s),
+		Remove: NewRemoveEndpoint(s),
+		Update: NewUpdateEndpoint(s),
+		Color:  NewColorEndpoint(s),
+		Sound:  NewSoundEndpoint(s),
 	}
 }
 
 // Use applies the given middleware to all the "schedule" service endpoints.
 func (e *Endpoints) Use(m func(goa.Endpoint) goa.Endpoint) {
-	e.Home = m(e.Home)
 	e.List = m(e.List)
-	e.Schedule = m(e.Schedule)
+	e.Create = m(e.Create)
 	e.Remove = m(e.Remove)
-}
-
-// NewHomeEndpoint returns an endpoint function that calls the method "home" of
-// service "schedule".
-func NewHomeEndpoint(s Service) goa.Endpoint {
-	return func(ctx context.Context, req interface{}) (interface{}, error) {
-		return nil, s.Home(ctx)
-	}
+	e.Update = m(e.Update)
+	e.Color = m(e.Color)
+	e.Sound = m(e.Sound)
 }
 
 // NewListEndpoint returns an endpoint function that calls the method "list" of
 // service "schedule".
 func NewListEndpoint(s Service) goa.Endpoint {
 	return func(ctx context.Context, req interface{}) (interface{}, error) {
-		res, err := s.List(ctx)
-		if err != nil {
-			return nil, err
-		}
-		vres := NewViewedSchedulePayloadCollection(res, "default")
-		return vres, nil
+		return s.List(ctx)
 	}
 }
 
-// NewScheduleEndpoint returns an endpoint function that calls the method
-// "schedule" of service "schedule".
-func NewScheduleEndpoint(s Service) goa.Endpoint {
+// NewCreateEndpoint returns an endpoint function that calls the method
+// "create" of service "schedule".
+func NewCreateEndpoint(s Service) goa.Endpoint {
 	return func(ctx context.Context, req interface{}) (interface{}, error) {
 		p := req.(*SchedulePayload)
-		return s.Schedule(ctx, p)
+		return s.Create(ctx, p)
 	}
 }
 
@@ -75,5 +68,31 @@ func NewRemoveEndpoint(s Service) goa.Endpoint {
 	return func(ctx context.Context, req interface{}) (interface{}, error) {
 		p := req.(*RemovePayload)
 		return nil, s.Remove(ctx, p)
+	}
+}
+
+// NewUpdateEndpoint returns an endpoint function that calls the method
+// "update" of service "schedule".
+func NewUpdateEndpoint(s Service) goa.Endpoint {
+	return func(ctx context.Context, req interface{}) (interface{}, error) {
+		p := req.(*UpdatePayload)
+		return nil, s.Update(ctx, p)
+	}
+}
+
+// NewColorEndpoint returns an endpoint function that calls the method "color"
+// of service "schedule".
+func NewColorEndpoint(s Service) goa.Endpoint {
+	return func(ctx context.Context, req interface{}) (interface{}, error) {
+		return s.Color(ctx)
+	}
+}
+
+// NewSoundEndpoint returns an endpoint function that calls the method "sound"
+// of service "schedule".
+func NewSoundEndpoint(s Service) goa.Endpoint {
+	return func(ctx context.Context, req interface{}) (interface{}, error) {
+		p := req.(*SoundPayload)
+		return nil, s.Sound(ctx, p)
 	}
 }
