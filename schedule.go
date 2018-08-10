@@ -2,14 +2,14 @@ package rg
 
 import (
 	"context"
-	"fmt"
 	"log"
-	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/jaredwarren/rg/cron"
 	"github.com/jaredwarren/rg/db"
 	schedule "github.com/jaredwarren/rg/gen/schedule"
-	"github.com/robfig/cron"
+	"github.com/jaredwarren/rg/pi"
+	// "github.com/robfig/cron"
 )
 
 // schedule service example implementation.
@@ -18,36 +18,7 @@ type scheduleSvc struct {
 	db     db.ScheduleStore
 	cron   *cron.Cron
 	logger *log.Logger
-}
-
-// CronJob ...
-type CronJob struct {
-	cron     *cron.Cron
-	schedule *schedule.Schedule
-}
-
-// Run ...
-func (c *CronJob) Run() {
-	// TODO: set color!!!
-	fmt.Println("SET COLOR:", c.schedule.Color)
-
-	specParser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
-	sched, _ := specParser.Parse(c.schedule.Cron)
-	c.schedule.Next = sched.Next(time.Now()).String()
-
-	// for _, e := range c.cron.Entries() {
-	// 	if e.
-	// }
-	// TODO: fiigure out how to update next
-	// c.schedule.Next =
-}
-
-// NewJob ...
-func NewJob(c *cron.Cron, sch *schedule.Schedule) (*CronJob, error) {
-	return &CronJob{
-		c,
-		sch,
-	}, nil
+	pi     pi.Pi
 }
 
 // NewSchedule returns the schedule service implementation.
@@ -58,32 +29,21 @@ func NewSchedule(d *bolt.DB, logger *log.Logger) (schedule.Service, error) {
 		return nil, err
 	}
 
+	// Start PI
+	rpi := pi.NewPi()
+
 	// Start CRON stuff
-	c := cron.New()
-	var res []*schedule.Schedule
-	if res, err = scheduleDb.FetchAll("SCHEDULE"); err != nil {
+	c := cron.NewCron(rpi)
+	var schedules []*schedule.Schedule
+	if schedules, err = scheduleDb.FetchAll("SCHEDULE"); err != nil {
 		return nil, err
 	}
-	specParser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
-	for _, sch := range res {
-		j, err := NewJob(c, sch)
-		if err != nil {
-			logger.Print(err)
-		}
-		c.AddJob(sch.Cron, j)
-		// parse
-		sched, err := specParser.Parse(sch.Cron)
-		if err != nil {
-			logger.Print(err)
-		}
-		if sched != nil {
-			sch.Next = sched.Next(time.Now()).String()
-		}
+	err = c.RunSchedules(schedules)
+	if err != nil {
+		return nil, err
 	}
-	c.Start()
-	// https://godoc.org/github.com/robfig/cron
 
-	return &scheduleSvc{scheduleDb, c, logger}, nil
+	return &scheduleSvc{scheduleDb, c, logger, rpi}, nil
 }
 
 // List all stored bottles
@@ -92,13 +52,10 @@ func (s *scheduleSvc) List(ctx context.Context) (res []*schedule.Schedule, err e
 	if res, err = s.db.FetchAll("SCHEDULE"); err != nil {
 		return nil, err
 	}
-	specParser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor | cron.Descriptor)
+
 	for _, sch := range res {
-		sched, err := specParser.Parse(sch.Cron)
-		if err != nil {
-			s.logger.Print(err)
-		}
-		sch.Next = sched.Next(time.Now()).String()
+		next, _ := cron.GetNext(sch)
+		sch.Next = next
 	}
 	return
 }
@@ -113,15 +70,13 @@ func (s *scheduleSvc) Create(ctx context.Context, p *schedule.SchedulePayload) (
 		Sound: false,
 		Color: p.Color,
 	}
+
 	// Add Cron Job
-	j, err := NewJob(s.cron, res)
+	err = s.cron.AddJob(res)
 	if err != nil {
 		return
 	}
-	err = s.cron.AddJob(res.Cron, j)
-	if err != nil {
-		return
-	}
+
 	// TODO: validate cron here or see if I can add a reges to schedule_service.go
 	id, err := s.db.New("SCHEDULE")
 	if err != nil {
@@ -142,26 +97,18 @@ func (s *scheduleSvc) Remove(ctx context.Context, p *schedule.RemovePayload) (er
 		return
 	}
 
+	// Restart cron
 	s.cron.Stop()
 
-	// Start CRON stuff
-	s.cron = cron.New()
-	var res []*schedule.Schedule
-	if res, err = s.db.FetchAll("SCHEDULE"); err != nil {
+	s.cron = cron.NewCron(s.pi)
+	var schedules []*schedule.Schedule
+	if schedules, err = s.db.FetchAll("SCHEDULE"); err != nil {
 		return
 	}
-	specParser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow | cron.Descriptor)
-	for _, sch := range res {
-		j, err := NewJob(s.cron, sch)
-		if err != nil {
-			s.logger.Print(err)
-		}
-		s.cron.AddJob(sch.Cron, j)
-		// parse
-		sched, _ := specParser.Parse(sch.Cron)
-		sch.Next = sched.Next(time.Now()).String()
+	err = s.cron.RunSchedules(schedules)
+	if err != nil {
+		return
 	}
-	s.cron.Start()
 
 	return
 }
@@ -174,6 +121,16 @@ func (s *scheduleSvc) Update(ctx context.Context, p *schedule.UpdatePayload) (er
 		Cron:  "",
 		Sound: false,
 		Color: p.Color,
+	}
+	// TODO: update physical led
+	for _, led := range s.pi.Leds {
+		led.Off()
+	}
+	if p.Color != "off" {
+		led, _ := s.pi.Leds[p.Color]
+		if led != nil {
+			led.On()
+		}
 	}
 	return s.db.Save("SETTINGS", res.ID, res)
 }
@@ -190,6 +147,7 @@ func (s *scheduleSvc) Color(ctx context.Context) (res *schedule.Color, err error
 	}, nil
 }
 
+// Sound Not currently supported
 func (s *scheduleSvc) Sound(ctx context.Context, p *schedule.SoundPayload) (err error) {
 	s.logger.Print("schedule.sound:", p.Sound)
 	res := &schedule.Schedule{
