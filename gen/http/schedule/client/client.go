@@ -26,15 +26,6 @@ type Client struct {
 	// Remove Doer is the HTTP client used to make requests to the remove endpoint.
 	RemoveDoer goahttp.Doer
 
-	// Update Doer is the HTTP client used to make requests to the update endpoint.
-	UpdateDoer goahttp.Doer
-
-	// Color Doer is the HTTP client used to make requests to the color endpoint.
-	ColorDoer goahttp.Doer
-
-	// Sound Doer is the HTTP client used to make requests to the sound endpoint.
-	SoundDoer goahttp.Doer
-
 	// RestoreResponseBody controls whether the response bodies are reset after
 	// decoding so they can be read again.
 	RestoreResponseBody bool
@@ -58,9 +49,6 @@ func NewClient(
 		ListDoer:            doer,
 		CreateDoer:          doer,
 		RemoveDoer:          doer,
-		UpdateDoer:          doer,
-		ColorDoer:           doer,
-		SoundDoer:           doer,
 		RestoreResponseBody: restoreBody,
 		scheme:              scheme,
 		host:                host,
@@ -129,76 +117,6 @@ func (c *Client) Remove() goa.Endpoint {
 
 		if err != nil {
 			return nil, goahttp.ErrRequestError("schedule", "remove", err)
-		}
-		return decodeResponse(resp)
-	}
-}
-
-// Update returns an endpoint that makes HTTP requests to the schedule service
-// update server.
-func (c *Client) Update() goa.Endpoint {
-	var (
-		encodeRequest  = EncodeUpdateRequest(c.encoder)
-		decodeResponse = DecodeUpdateResponse(c.decoder, c.RestoreResponseBody)
-	)
-	return func(ctx context.Context, v interface{}) (interface{}, error) {
-		req, err := c.BuildUpdateRequest(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-		err = encodeRequest(req, v)
-		if err != nil {
-			return nil, err
-		}
-		resp, err := c.UpdateDoer.Do(req)
-
-		if err != nil {
-			return nil, goahttp.ErrRequestError("schedule", "update", err)
-		}
-		return decodeResponse(resp)
-	}
-}
-
-// Color returns an endpoint that makes HTTP requests to the schedule service
-// color server.
-func (c *Client) Color() goa.Endpoint {
-	var (
-		decodeResponse = DecodeColorResponse(c.decoder, c.RestoreResponseBody)
-	)
-	return func(ctx context.Context, v interface{}) (interface{}, error) {
-		req, err := c.BuildColorRequest(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-		resp, err := c.ColorDoer.Do(req)
-
-		if err != nil {
-			return nil, goahttp.ErrRequestError("schedule", "color", err)
-		}
-		return decodeResponse(resp)
-	}
-}
-
-// Sound returns an endpoint that makes HTTP requests to the schedule service
-// sound server.
-func (c *Client) Sound() goa.Endpoint {
-	var (
-		encodeRequest  = EncodeSoundRequest(c.encoder)
-		decodeResponse = DecodeSoundResponse(c.decoder, c.RestoreResponseBody)
-	)
-	return func(ctx context.Context, v interface{}) (interface{}, error) {
-		req, err := c.BuildSoundRequest(ctx, v)
-		if err != nil {
-			return nil, err
-		}
-		err = encodeRequest(req, v)
-		if err != nil {
-			return nil, err
-		}
-		resp, err := c.SoundDoer.Do(req)
-
-		if err != nil {
-			return nil, goahttp.ErrRequestError("schedule", "sound", err)
 		}
 		return decodeResponse(resp)
 	}

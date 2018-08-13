@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"os"
 
+	colorc "github.com/jaredwarren/rg/gen/http/color/client"
 	schedulec "github.com/jaredwarren/rg/gen/http/schedule/client"
 	goa "goa.design/goa"
 	goahttp "goa.design/goa/http"
@@ -23,13 +24,17 @@ import (
 //    command (subcommand1|subcommand2|...)
 //
 func UsageCommands() string {
-	return `schedule (list|create|remove|update|color|sound)
+	return `color (update|color)
+schedule (list|create|remove)
 `
 }
 
 // UsageExamples produces an example of a valid invocation of the CLI tool.
 func UsageExamples() string {
-	return os.Args[0] + ` schedule list` + "\n" +
+	return os.Args[0] + ` color update --body '{
+      "color": "yellow"
+   }'` + "\n" +
+		os.Args[0] + ` schedule list` + "\n" +
 		""
 }
 
@@ -43,6 +48,13 @@ func ParseEndpoint(
 	restore bool,
 ) (goa.Endpoint, interface{}, error) {
 	var (
+		colorFlags = flag.NewFlagSet("color", flag.ContinueOnError)
+
+		colorUpdateFlags    = flag.NewFlagSet("update", flag.ExitOnError)
+		colorUpdateBodyFlag = colorUpdateFlags.String("body", "REQUIRED", "")
+
+		colorColorFlags = flag.NewFlagSet("color", flag.ExitOnError)
+
 		scheduleFlags = flag.NewFlagSet("schedule", flag.ContinueOnError)
 
 		scheduleListFlags = flag.NewFlagSet("list", flag.ExitOnError)
@@ -52,22 +64,15 @@ func ParseEndpoint(
 
 		scheduleRemoveFlags  = flag.NewFlagSet("remove", flag.ExitOnError)
 		scheduleRemoveIDFlag = scheduleRemoveFlags.String("id", "REQUIRED", "")
-
-		scheduleUpdateFlags    = flag.NewFlagSet("update", flag.ExitOnError)
-		scheduleUpdateBodyFlag = scheduleUpdateFlags.String("body", "REQUIRED", "")
-
-		scheduleColorFlags = flag.NewFlagSet("color", flag.ExitOnError)
-
-		scheduleSoundFlags    = flag.NewFlagSet("sound", flag.ExitOnError)
-		scheduleSoundBodyFlag = scheduleSoundFlags.String("body", "REQUIRED", "")
 	)
+	colorFlags.Usage = colorUsage
+	colorUpdateFlags.Usage = colorUpdateUsage
+	colorColorFlags.Usage = colorColorUsage
+
 	scheduleFlags.Usage = scheduleUsage
 	scheduleListFlags.Usage = scheduleListUsage
 	scheduleCreateFlags.Usage = scheduleCreateUsage
 	scheduleRemoveFlags.Usage = scheduleRemoveUsage
-	scheduleUpdateFlags.Usage = scheduleUpdateUsage
-	scheduleColorFlags.Usage = scheduleColorUsage
-	scheduleSoundFlags.Usage = scheduleSoundUsage
 
 	if err := flag.CommandLine.Parse(os.Args[1:]); err != nil {
 		return nil, nil, err
@@ -84,6 +89,8 @@ func ParseEndpoint(
 	{
 		svcn = os.Args[1+flag.NFlag()]
 		switch svcn {
+		case "color":
+			svcf = colorFlags
 		case "schedule":
 			svcf = scheduleFlags
 		default:
@@ -101,6 +108,16 @@ func ParseEndpoint(
 	{
 		epn = os.Args[2+flag.NFlag()+svcf.NFlag()]
 		switch svcn {
+		case "color":
+			switch epn {
+			case "update":
+				epf = colorUpdateFlags
+
+			case "color":
+				epf = colorColorFlags
+
+			}
+
 		case "schedule":
 			switch epn {
 			case "list":
@@ -111,15 +128,6 @@ func ParseEndpoint(
 
 			case "remove":
 				epf = scheduleRemoveFlags
-
-			case "update":
-				epf = scheduleUpdateFlags
-
-			case "color":
-				epf = scheduleColorFlags
-
-			case "sound":
-				epf = scheduleSoundFlags
 
 			}
 
@@ -143,6 +151,16 @@ func ParseEndpoint(
 	)
 	{
 		switch svcn {
+		case "color":
+			c := colorc.NewClient(scheme, host, doer, enc, dec, restore)
+			switch epn {
+			case "update":
+				endpoint = c.Update()
+				data, err = colorc.BuildUpdatePayload(*colorUpdateBodyFlag)
+			case "color":
+				endpoint = c.Color()
+				data = nil
+			}
 		case "schedule":
 			c := schedulec.NewClient(scheme, host, doer, enc, dec, restore)
 			switch epn {
@@ -155,15 +173,6 @@ func ParseEndpoint(
 			case "remove":
 				endpoint = c.Remove()
 				data, err = schedulec.BuildRemovePayload(*scheduleRemoveIDFlag)
-			case "update":
-				endpoint = c.Update()
-				data, err = schedulec.BuildUpdatePayload(*scheduleUpdateBodyFlag)
-			case "color":
-				endpoint = c.Color()
-				data = nil
-			case "sound":
-				endpoint = c.Sound()
-				data, err = schedulec.BuildSoundPayload(*scheduleSoundBodyFlag)
 			}
 		}
 	}
@@ -172,6 +181,43 @@ func ParseEndpoint(
 	}
 
 	return endpoint, data, nil
+}
+
+// colorUsage displays the usage of the color command and its subcommands.
+func colorUsage() {
+	fmt.Fprintf(os.Stderr, `Color service
+Usage:
+    %s [globalflags] color COMMAND [flags]
+
+COMMAND:
+    update: Set color
+    color: get current color
+
+Additional help:
+    %s color COMMAND --help
+`, os.Args[0], os.Args[0])
+}
+func colorUpdateUsage() {
+	fmt.Fprintf(os.Stderr, `%s [flags] color update -body JSON
+
+Set color
+    -body JSON: 
+
+Example:
+    `+os.Args[0]+` color update --body '{
+      "color": "yellow"
+   }'
+`, os.Args[0])
+}
+
+func colorColorUsage() {
+	fmt.Fprintf(os.Stderr, `%s [flags] color color
+
+get current color
+
+Example:
+    `+os.Args[0]+` color color
+`, os.Args[0])
 }
 
 // scheduleUsage displays the usage of the schedule command and its subcommands.
@@ -184,9 +230,6 @@ COMMAND:
     list: List all stored bottles
     create: create new cron schedule
     remove: Remove cron schedule
-    update: Remove cron schedule
-    color: Remove cron schedule
-    sound: Remove cron schedule
 
 Additional help:
     %s schedule COMMAND --help
@@ -210,11 +253,10 @@ create new cron schedule
 
 Example:
     `+os.Args[0]+` schedule create --body '{
-      "color": "off",
+      "color": "green",
       "cron": "30 6 * * 1-5",
       "name": "Week Days at 6:30am",
-      "next": "",
-      "sound": false
+      "next": ""
    }'
 `, os.Args[0])
 }
@@ -226,42 +268,6 @@ Remove cron schedule
     -id STRING: 
 
 Example:
-    `+os.Args[0]+` schedule remove --id "Nihil similique beatae ratione et quo aut."
-`, os.Args[0])
-}
-
-func scheduleUpdateUsage() {
-	fmt.Fprintf(os.Stderr, `%s [flags] schedule update -body JSON
-
-Remove cron schedule
-    -body JSON: 
-
-Example:
-    `+os.Args[0]+` schedule update --body '{
-      "color": "off"
-   }'
-`, os.Args[0])
-}
-
-func scheduleColorUsage() {
-	fmt.Fprintf(os.Stderr, `%s [flags] schedule color
-
-Remove cron schedule
-
-Example:
-    `+os.Args[0]+` schedule color
-`, os.Args[0])
-}
-
-func scheduleSoundUsage() {
-	fmt.Fprintf(os.Stderr, `%s [flags] schedule sound -body JSON
-
-Remove cron schedule
-    -body JSON: 
-
-Example:
-    `+os.Args[0]+` schedule sound --body '{
-      "sound": false
-   }'
+    `+os.Args[0]+` schedule remove --id "Exercitationem unde aperiam nihil similique beatae ratione."
 `, os.Args[0])
 }

@@ -19,12 +19,6 @@ type Service interface {
 	Create(context.Context, *SchedulePayload) (res *Schedule, err error)
 	// Remove cron schedule
 	Remove(context.Context, *RemovePayload) (err error)
-	// Remove cron schedule
-	Update(context.Context, *UpdatePayload) (err error)
-	// Remove cron schedule
-	Color(context.Context) (res *Color, err error)
-	// Remove cron schedule
-	Sound(context.Context, *SoundPayload) (err error)
 }
 
 // ServiceName is the name of the service as defined in the design. This is the
@@ -35,7 +29,7 @@ const ServiceName = "schedule"
 // MethodNames lists the service method names as defined in the design. These
 // are the same values that are set in the endpoint request contexts under the
 // MethodKey key.
-var MethodNames = [6]string{"list", "create", "remove", "update", "color", "sound"}
+var MethodNames = [3]string{"list", "create", "remove"}
 
 // SchedulePayload is the payload type of the schedule service create method.
 type SchedulePayload struct {
@@ -47,8 +41,6 @@ type SchedulePayload struct {
 	Color string
 	// next time
 	Next string
-	// sound on/off
-	Sound bool
 }
 
 // Schedule is the result type of the schedule service create method.
@@ -61,8 +53,6 @@ type Schedule struct {
 	Cron string
 	// color to set
 	Color string
-	// sound on/off
-	Sound bool
 	// next time
 	Next string
 }
@@ -70,24 +60,6 @@ type Schedule struct {
 // RemovePayload is the payload type of the schedule service remove method.
 type RemovePayload struct {
 	ID string
-}
-
-// UpdatePayload is the payload type of the schedule service update method.
-type UpdatePayload struct {
-	// color to set
-	Color string
-}
-
-// Color is the result type of the schedule service color method.
-type Color struct {
-	// color to set
-	Color string
-}
-
-// SoundPayload is the payload type of the schedule service sound method.
-type SoundPayload struct {
-	// sound on/off
-	Sound bool
 }
 
 // NotFound is the type returned when attempting to show or delete a bottle

@@ -5,17 +5,6 @@ import . "goa.design/goa/http/dsl"
 
 var _ = Service("schedule", func() {
 	Description("The Alarm schedule service.")
-	HTTP(func() {
-		Path("/")
-	})
-
-	// HTML
-
-	Files("/favicon.ico", "static/favicon.ico")
-	Files("/static/{*filename}", "static/")
-	Files("/home/", "static/index.html")
-
-	// JSON
 
 	Method("list", func() {
 		Description("List all stored bottles")
@@ -48,44 +37,6 @@ var _ = Service("schedule", func() {
 			Response(StatusNoContent)
 		})
 	})
-
-	Method("update", func() {
-		Description("Remove cron schedule")
-		Payload(func() {
-			Attribute("color", String, "color to set", func() {
-				Enum("red", "yellow", "green", "off")
-			})
-			Required("color")
-		})
-		HTTP(func() {
-			POST("/color")
-			Response(StatusNoContent)
-		})
-	})
-
-	Method("color", func() {
-		Description("Remove cron schedule")
-		Result(Color)
-		HTTP(func() {
-			GET("/color")
-			Response(StatusOK)
-		})
-	})
-
-	Method("sound", func() {
-		Description("Remove cron schedule")
-		Payload(func() {
-			Attribute("sound", Boolean, "sound on/off", func() {
-				Default(true)
-			})
-			Required("sound")
-		})
-		HTTP(func() {
-			POST("/sound")
-			Response(StatusNoContent)
-		})
-	})
-
 })
 
 // SchedulePayload describes a cron schedule payload.
@@ -98,19 +49,17 @@ var SchedulePayload = ResultType("application/vnd.rg.schedule", func() {
 		Attribute("name")
 		Attribute("cron")
 		Attribute("color")
+		// TODO: add sound, camera ...
 		Attribute("next")
-		Attribute("sound")
 	})
 	View("default", func() {
-		// Attribute("id")
 		Attribute("name")
 		Attribute("cron")
 		Attribute("color")
 		Attribute("next")
-		Attribute("sound")
 	})
 
-	Required("name", "cron", "color", "sound", "next")
+	Required("name", "cron", "color", "next")
 })
 
 // Schedule describes a cron schedule.
@@ -132,25 +81,12 @@ var Schedule = Type("Schedule", func() {
 		Enum("red", "yellow", "green", "off")
 	})
 
-	Attribute("sound", Boolean, "sound on/off", func() {
-		Default(true)
-	})
+	// TODO: add sound, camera ...
 
 	Attribute("next", String, "next time", func() {
 		Example("") // Week Days at 6:30am
 		Default("")
 	})
 
-	Required("id", "color", "cron", "sound")
-})
-
-// Color current state.
-var Color = Type("Color", func() {
-	Description("Color current state.")
-
-	Attribute("color", String, "color to set", func() {
-		Enum("red", "yellow", "green", "off")
-	})
-
-	Required("color")
+	Required("id", "color", "cron")
 })

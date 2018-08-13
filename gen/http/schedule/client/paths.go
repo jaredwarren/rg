@@ -25,18 +25,3 @@ func CreateSchedulePath() string {
 func RemoveSchedulePath(id string) string {
 	return fmt.Sprintf("/schedule/%v", id)
 }
-
-// UpdateSchedulePath returns the URL path to the schedule service update HTTP endpoint.
-func UpdateSchedulePath() string {
-	return "/color"
-}
-
-// ColorSchedulePath returns the URL path to the schedule service color HTTP endpoint.
-func ColorSchedulePath() string {
-	return "/color"
-}
-
-// SoundSchedulePath returns the URL path to the schedule service sound HTTP endpoint.
-func SoundSchedulePath() string {
-	return "/sound"
-}

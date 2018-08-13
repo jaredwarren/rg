@@ -18,9 +18,6 @@ type Endpoints struct {
 	List   goa.Endpoint
 	Create goa.Endpoint
 	Remove goa.Endpoint
-	Update goa.Endpoint
-	Color  goa.Endpoint
-	Sound  goa.Endpoint
 }
 
 // NewEndpoints wraps the methods of the "schedule" service with endpoints.
@@ -29,9 +26,6 @@ func NewEndpoints(s Service) *Endpoints {
 		List:   NewListEndpoint(s),
 		Create: NewCreateEndpoint(s),
 		Remove: NewRemoveEndpoint(s),
-		Update: NewUpdateEndpoint(s),
-		Color:  NewColorEndpoint(s),
-		Sound:  NewSoundEndpoint(s),
 	}
 }
 
@@ -40,9 +34,6 @@ func (e *Endpoints) Use(m func(goa.Endpoint) goa.Endpoint) {
 	e.List = m(e.List)
 	e.Create = m(e.Create)
 	e.Remove = m(e.Remove)
-	e.Update = m(e.Update)
-	e.Color = m(e.Color)
-	e.Sound = m(e.Sound)
 }
 
 // NewListEndpoint returns an endpoint function that calls the method "list" of
@@ -68,31 +59,5 @@ func NewRemoveEndpoint(s Service) goa.Endpoint {
 	return func(ctx context.Context, req interface{}) (interface{}, error) {
 		p := req.(*RemovePayload)
 		return nil, s.Remove(ctx, p)
-	}
-}
-
-// NewUpdateEndpoint returns an endpoint function that calls the method
-// "update" of service "schedule".
-func NewUpdateEndpoint(s Service) goa.Endpoint {
-	return func(ctx context.Context, req interface{}) (interface{}, error) {
-		p := req.(*UpdatePayload)
-		return nil, s.Update(ctx, p)
-	}
-}
-
-// NewColorEndpoint returns an endpoint function that calls the method "color"
-// of service "schedule".
-func NewColorEndpoint(s Service) goa.Endpoint {
-	return func(ctx context.Context, req interface{}) (interface{}, error) {
-		return s.Color(ctx)
-	}
-}
-
-// NewSoundEndpoint returns an endpoint function that calls the method "sound"
-// of service "schedule".
-func NewSoundEndpoint(s Service) goa.Endpoint {
-	return func(ctx context.Context, req interface{}) (interface{}, error) {
-		p := req.(*SoundPayload)
-		return nil, s.Sound(ctx, p)
 	}
 }

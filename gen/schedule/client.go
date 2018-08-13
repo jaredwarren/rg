@@ -18,20 +18,14 @@ type Client struct {
 	ListEndpoint   goa.Endpoint
 	CreateEndpoint goa.Endpoint
 	RemoveEndpoint goa.Endpoint
-	UpdateEndpoint goa.Endpoint
-	ColorEndpoint  goa.Endpoint
-	SoundEndpoint  goa.Endpoint
 }
 
 // NewClient initializes a "schedule" service client given the endpoints.
-func NewClient(list, create, remove, update, color, sound goa.Endpoint) *Client {
+func NewClient(list, create, remove goa.Endpoint) *Client {
 	return &Client{
 		ListEndpoint:   list,
 		CreateEndpoint: create,
 		RemoveEndpoint: remove,
-		UpdateEndpoint: update,
-		ColorEndpoint:  color,
-		SoundEndpoint:  sound,
 	}
 }
 
@@ -61,27 +55,5 @@ func (c *Client) Create(ctx context.Context, p *SchedulePayload) (res *Schedule,
 //	- error: internal error
 func (c *Client) Remove(ctx context.Context, p *RemovePayload) (err error) {
 	_, err = c.RemoveEndpoint(ctx, p)
-	return
-}
-
-// Update calls the "update" endpoint of the "schedule" service.
-func (c *Client) Update(ctx context.Context, p *UpdatePayload) (err error) {
-	_, err = c.UpdateEndpoint(ctx, p)
-	return
-}
-
-// Color calls the "color" endpoint of the "schedule" service.
-func (c *Client) Color(ctx context.Context) (res *Color, err error) {
-	var ires interface{}
-	ires, err = c.ColorEndpoint(ctx, nil)
-	if err != nil {
-		return
-	}
-	return ires.(*Color), nil
-}
-
-// Sound calls the "sound" endpoint of the "schedule" service.
-func (c *Client) Sound(ctx context.Context, p *SoundPayload) (err error) {
-	_, err = c.SoundEndpoint(ctx, p)
 	return
 }

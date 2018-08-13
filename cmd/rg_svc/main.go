@@ -12,8 +12,12 @@ import (
 
 	"github.com/boltdb/bolt"
 	rg "github.com/jaredwarren/rg"
+	"github.com/jaredwarren/rg/gen/color"
+	colorsvr "github.com/jaredwarren/rg/gen/http/color/server"
+	homesvr "github.com/jaredwarren/rg/gen/http/home/server"
 	schedulesvr "github.com/jaredwarren/rg/gen/http/schedule/server"
 	schedule "github.com/jaredwarren/rg/gen/schedule"
+	"github.com/jaredwarren/rg/pi"
 	goahttp "goa.design/goa/http"
 	"goa.design/goa/http/middleware"
 )
@@ -51,26 +55,38 @@ func main() {
 		}
 		defer db.Close()
 	}
+	// initialize pi
+	// Start PI
+	rpi := pi.NewPi()
 
 	// Create the structs that implement the services.
 	var (
+		// homeSvc     home.Service
 		scheduleSvc schedule.Service
+		colorSvc    color.Service
 	)
 	{
 		var err error
-		scheduleSvc, err = rg.NewSchedule(db, logger)
+		colorSvc = rg.NewColor(rpi, logger)
+		// homeSvc = rg.NewHome(logger)
+
+		scheduleSvc, err = rg.NewSchedule(db, rpi, logger)
 		if err != nil {
-			logger.Fatalf("error creating game service: %s", err)
+			logger.Fatalf("error creating schedule service: %s", err)
 		}
 	}
 
 	// Wrap the services in endpoints that can be invoked from other
 	// services potentially running in different processes.
 	var (
+		// homeEndpoints     *home.Endpoints
 		scheduleEndpoints *schedule.Endpoints
+		colorEndpoints    *color.Endpoints
 	)
 	{
+		// homeEndpoints = home.NewEndpoints(homeSvc)
 		scheduleEndpoints = schedule.NewEndpoints(scheduleSvc)
+		colorEndpoints = color.NewEndpoints(colorSvc)
 	}
 
 	// Provide the transport specific request decoder and response encoder.
@@ -94,15 +110,21 @@ func main() {
 	// the service input and output data structures to HTTP requests and
 	// responses.
 	var (
+		// homeServer     *homesvr.Server
 		scheduleServer *schedulesvr.Server
+		colorServer    *colorsvr.Server
 	)
 	{
 		eh := ErrorHandler(logger)
+		// homeServer = homesvr.New(homeEndpoints, mux, dec, enc, eh)
 		scheduleServer = schedulesvr.New(scheduleEndpoints, mux, dec, enc, eh)
+		colorServer = colorsvr.New(colorEndpoints, mux, dec, enc, eh)
 	}
 
 	// Configure the mux.
+	homesvr.Mount(mux)
 	schedulesvr.Mount(mux, scheduleServer)
+	colorsvr.Mount(mux, colorServer)
 
 	// Wrap the multiplexer with additional middlewares. Middlewares mounted
 	// here apply to all the service endpoints.

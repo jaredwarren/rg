@@ -21,15 +21,12 @@ type scheduleSvc struct {
 }
 
 // NewSchedule returns the schedule service implementation.
-func NewSchedule(d *bolt.DB, logger *log.Logger) (schedule.Service, error) {
+func NewSchedule(d *bolt.DB, rpi pi.Pi, logger *log.Logger) (schedule.Service, error) {
 	// Setup database
 	scheduleDb, err := db.NewScheduleDB(d)
 	if err != nil {
 		return nil, err
 	}
-
-	// Start PI
-	rpi := pi.NewPi()
 
 	// Start CRON stuff
 	c := cron.NewCron(rpi)
@@ -45,7 +42,7 @@ func NewSchedule(d *bolt.DB, logger *log.Logger) (schedule.Service, error) {
 	return &scheduleSvc{scheduleDb, c, logger, rpi}, nil
 }
 
-// List all stored bottles
+// List all stored schedules
 func (s *scheduleSvc) List(ctx context.Context) (res []*schedule.Schedule, err error) {
 	s.logger.Print("schedule.list")
 	if res, err = s.db.FetchAll("SCHEDULE"); err != nil {
@@ -66,7 +63,6 @@ func (s *scheduleSvc) Create(ctx context.Context, p *schedule.SchedulePayload) (
 	res = &schedule.Schedule{
 		Name:  p.Name,
 		Cron:  p.Cron,
-		Sound: false,
 		Color: p.Color,
 	}
 
@@ -110,56 +106,4 @@ func (s *scheduleSvc) Remove(ctx context.Context, p *schedule.RemovePayload) (er
 	}
 
 	return
-}
-
-func (s *scheduleSvc) Update(ctx context.Context, p *schedule.UpdatePayload) (err error) {
-	s.logger.Print("schedule.color:", p.Color)
-	res := &schedule.Schedule{
-		ID:    "current_color",
-		Name:  "",
-		Cron:  "",
-		Sound: false,
-		Color: p.Color,
-	}
-	// TODO: update physical led
-	for _, led := range s.pi.Leds {
-		led.Off()
-	}
-	if p.Color != "off" {
-		led, _ := s.pi.Leds[p.Color]
-		if led != nil {
-			led.On()
-		}
-	}
-	return s.db.Save("SETTINGS", res.ID, res)
-}
-
-func (s *scheduleSvc) Color(ctx context.Context) (res *schedule.Color, err error) {
-	r, _ := s.db.Fetch("SETTINGS", "current_color")
-	if r != nil && r.Color != "" {
-		return &schedule.Color{
-			Color: r.Color,
-		}, nil
-	}
-	return &schedule.Color{
-		Color: "off",
-	}, nil
-}
-
-// Sound Not currently supported
-func (s *scheduleSvc) Sound(ctx context.Context, p *schedule.SoundPayload) (err error) {
-	s.logger.Print("schedule.sound:", p.Sound)
-	res := &schedule.Schedule{
-		ID:   "current_sound",
-		Name: "",
-		Cron: "",
-	}
-	// TODO: fix this so I don't have to use schedule.Schedule to store settings :(
-	if p.Sound {
-		res.Color = "on"
-	} else {
-		res.Color = "off"
-	}
-
-	return s.db.Save("SETTINGS", res.ID, res)
 }

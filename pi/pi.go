@@ -10,15 +10,17 @@ import (
 
 // Pi ...
 type Pi struct {
-	Leds map[string]*gpio.LedDriver
+	currentColor string
+	leds         map[string]*gpio.LedDriver
 }
 
+// NewPi ...
 func NewPi() Pi {
-	// Raspberry Pi
 	rpi := raspi.NewAdaptor()
+	// TODO: Find a better way to dynamically set leds
 	red := gpio.NewLedDriver(rpi, fmt.Sprintf("%X", 17))
-	yellow := gpio.NewLedDriver(rpi, fmt.Sprintf("%X", 18)) // make sure pins work
-	green := gpio.NewLedDriver(rpi, fmt.Sprintf("%X", 19))
+	yellow := gpio.NewLedDriver(rpi, fmt.Sprintf("%X", 27)) // make sure pins work
+	green := gpio.NewLedDriver(rpi, fmt.Sprintf("%X", 22))
 
 	work := func() {
 		red.Off()
@@ -33,10 +35,32 @@ func NewPi() Pi {
 	)
 	go robot.Start()
 	return Pi{
-		Leds: map[string]*gpio.LedDriver{
+		currentColor: "off",
+		leds: map[string]*gpio.LedDriver{
 			"red":    red,
 			"yellow": yellow,
 			"green":  green,
 		},
 	}
+}
+
+// SetColor ...
+func (p *Pi) SetColor(color string) error {
+	for _, led := range p.leds {
+		led.Off()
+	}
+	if color != "off" {
+		led, _ := p.leds[color]
+		if led != nil {
+			// TODO: for now just log error
+			led.On()
+			p.currentColor = color
+		}
+	}
+	return nil
+}
+
+// GetColor ...
+func (p *Pi) GetColor() string {
+	return p.currentColor
 }

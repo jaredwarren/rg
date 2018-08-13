@@ -9,16 +9,16 @@ import (
 	"github.com/robfig/cron"
 )
 
-// CronJob ...
-type CronJob struct {
+// Job ...
+type Job struct {
 	cron     *cron.Cron
 	schedule *schedule.Schedule
 	pi       pi.Pi
 }
 
 // NewJob ...
-func NewJob(c *cron.Cron, sch *schedule.Schedule, pi pi.Pi) (*CronJob, error) {
-	return &CronJob{
+func NewJob(c *cron.Cron, sch *schedule.Schedule, pi pi.Pi) (*Job, error) {
+	return &Job{
 		c,
 		sch,
 		pi,
@@ -26,18 +26,10 @@ func NewJob(c *cron.Cron, sch *schedule.Schedule, pi pi.Pi) (*CronJob, error) {
 }
 
 // Run ...
-func (j *CronJob) Run() {
-	for _, led := range j.pi.Leds {
-		led.Off()
-	}
-	if j.schedule.Color != "off" {
-		led, _ := j.pi.Leds[j.schedule.Color]
-		if led != nil {
-			led.On()
-		}
-	}
-
+func (j *Job) Run() {
+	j.pi.SetColor(j.schedule.Color)
 	fmt.Println("SET COLOR:", j.schedule.Color, time.Now().String())
-	sched, _ := cron.Parse(j.schedule.Cron)
-	j.schedule.Next = sched.Next(time.Now()).String()
+	// calculate next
+	schedule, _ := cron.Parse(j.schedule.Cron)
+	j.schedule.Next = schedule.Next(time.Now()).String()
 }

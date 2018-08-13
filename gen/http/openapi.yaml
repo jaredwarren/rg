@@ -8,10 +8,10 @@ paths:
   /color:
     get:
       tags:
-      - schedule
-      summary: color schedule
-      description: Remove cron schedule
-      operationId: schedule#color
+      - color
+      summary: color color
+      description: get current color
+      operationId: color#color
       responses:
         "200":
           description: OK response.
@@ -23,16 +23,16 @@ paths:
       - http
     post:
       tags:
-      - schedule
-      summary: update schedule
-      description: Remove cron schedule
-      operationId: schedule#update
+      - color
+      summary: update color
+      description: Set color
+      operationId: color#update
       parameters:
       - name: UpdateRequestBody
         in: body
         required: true
         schema:
-          $ref: '#/definitions/ScheduleUpdateRequestBody'
+          $ref: '#/definitions/ColorUpdateRequestBody'
           required:
           - color
       responses:
@@ -43,7 +43,7 @@ paths:
   /favicon.ico:
     get:
       summary: Download static/favicon.ico
-      operationId: schedule#/favicon.ico
+      operationId: home#/favicon.ico
       responses:
         "200":
           description: File downloaded
@@ -54,7 +54,7 @@ paths:
   /home:
     get:
       summary: Download static/index.html
-      operationId: schedule#/home
+      operationId: home#/home
       responses:
         "200":
           description: File downloaded
@@ -94,7 +94,6 @@ paths:
           - name
           - cron
           - color
-          - sound
           - next
           - id
       responses:
@@ -106,7 +105,6 @@ paths:
             - id
             - color
             - cron
-            - sound
       schemes:
       - http
   /schedule/{id}:
@@ -126,30 +124,10 @@ paths:
           description: No Content response.
       schemes:
       - http
-  /sound:
-    post:
-      tags:
-      - schedule
-      summary: sound schedule
-      description: Remove cron schedule
-      operationId: schedule#sound
-      parameters:
-      - name: SoundRequestBody
-        in: body
-        required: true
-        schema:
-          $ref: '#/definitions/ScheduleSoundRequestBody'
-          required:
-          - sound
-      responses:
-        "204":
-          description: No Content response.
-      schemes:
-      - http
   /static/{*filename}}:
     get:
       summary: Download static/
-      operationId: schedule#/static/{*filename}
+      operationId: home#/static/{*filename}
       parameters:
       - name: filename
         in: path
@@ -170,6 +148,23 @@ paths:
 definitions:
   ColorResponseBody:
     title: ColorResponseBody
+    type: object
+    properties:
+      color:
+        type: string
+        description: color to set
+        example: red
+        enum:
+        - red
+        - yellow
+        - green
+        - "off"
+    example:
+      color: "off"
+    required:
+    - color
+  ColorUpdateRequestBody:
+    title: ColorUpdateRequestBody
     type: object
     properties:
       color:
@@ -217,23 +212,16 @@ definitions:
         description: next time
         default: ""
         example: ""
-      sound:
-        type: boolean
-        description: sound on/off
-        default: true
-        example: true
     example:
-      color: "off"
+      color: yellow
       cron: 30 6 * * 1-5
       id: schedule_21345
       name: Week Days at 6:30am
       next: ""
-      sound: false
     required:
     - id
     - color
     - cron
-    - sound
   ScheduleCreateRequestBody:
     title: ScheduleCreateRequestBody
     type: object
@@ -241,7 +229,7 @@ definitions:
       color:
         type: string
         description: color to set
-        example: red
+        example: green
         enum:
         - red
         - yellow
@@ -262,22 +250,15 @@ definitions:
         description: next time
         default: ""
         example: ""
-      sound:
-        type: boolean
-        description: sound on/off
-        default: true
-        example: true
     example:
       color: yellow
       cron: 30 6 * * 1-5
       name: Week Days at 6:30am
       next: ""
-      sound: false
     required:
     - name
     - cron
     - color
-    - sound
     - next
     - id
   ScheduleResponseBody:
@@ -287,7 +268,7 @@ definitions:
       color:
         type: string
         description: color to set
-        example: red
+        example: green
         enum:
         - red
         - yellow
@@ -312,11 +293,6 @@ definitions:
         description: next time
         default: ""
         example: ""
-      sound:
-        type: boolean
-        description: sound on/off
-        default: true
-        example: false
     description: Schedule describes a cron schedule.
     example:
       color: green
@@ -324,42 +300,10 @@ definitions:
       id: schedule_21345
       name: Week Days at 6:30am
       next: ""
-      sound: false
     required:
     - id
     - color
     - cron
-    - sound
-  ScheduleSoundRequestBody:
-    title: ScheduleSoundRequestBody
-    type: object
-    properties:
-      sound:
-        type: boolean
-        description: sound on/off
-        default: true
-        example: false
-    example:
-      sound: true
-    required:
-    - sound
-  ScheduleUpdateRequestBody:
-    title: ScheduleUpdateRequestBody
-    type: object
-    properties:
-      color:
-        type: string
-        description: color to set
-        example: "off"
-        enum:
-        - red
-        - yellow
-        - green
-        - "off"
-    example:
-      color: yellow
-    required:
-    - color
   error:
     title: 'Mediatype identifier: application/vnd.goa.error; view=default'
     type: object
@@ -385,19 +329,19 @@ definitions:
       temporary:
         type: boolean
         description: Is the error temporary?
-        example: false
+        example: true
       timeout:
         type: boolean
         description: Is the error a timeout?
-        example: true
+        example: false
     description: Error response result type (default view)
     example:
-      fault: true
+      fault: false
       id: 123abc
       message: parameter 'p' must be an integer
       name: bad_request
-      temporary: false
-      timeout: true
+      temporary: true
+      timeout: false
     required:
     - name
     - id

@@ -32,10 +32,6 @@ type ScheduleDB struct {
 func NewScheduleDB(client *bolt.DB) (ScheduleStore, error) {
 	err := client.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists([]byte("SCHEDULE"))
-		if err != nil {
-			return err
-		}
-		_, err = tx.CreateBucketIfNotExists([]byte("SETTINGS"))
 		return err
 	})
 	if err != nil {
