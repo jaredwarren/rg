@@ -4,38 +4,33 @@ import (
 	"time"
 
 	"github.com/jaredwarren/rg/gen/schedule"
-	"github.com/jaredwarren/rg/pi"
 	"github.com/robfig/cron"
 )
 
-// Cron ...
+// Cron wrapper for https://godoc.org/github.com/robfig/cron
 type Cron struct {
-	cron *cron.Cron
-	pi   pi.Pi
+	cron   *cron.Cron
+	runner func(*schedule.Schedule)
 }
 
-// NewCron ...
-func NewCron(rpi pi.Pi) *Cron {
-	return &Cron{cron.New(), rpi}
+// NewCron new cron job runner
+func NewCron(runner func(*schedule.Schedule)) *Cron {
+	return &Cron{cron.New(), runner}
 }
 
-// func Parse(c string) {
-// 	cron.Parse()
-// }
-
-// RunSchedules ...
+// RunSchedules run jobs from schedule list
 func (c *Cron) RunSchedules(schedules []*schedule.Schedule) error {
 	for _, sch := range schedules {
-		j, err := NewJob(c.cron, sch, c.pi)
+		j, err := NewJob(c.cron, sch, c.runner)
 		if err != nil {
-			// return err // ignore errors
+			// ignore errors
 			continue
 		}
 		c.cron.AddJob(sch.Cron, j)
 		// parse
 		cronSch, err := cron.Parse(sch.Cron)
 		if err != nil {
-			// return err // ignore errors
+			// ignore errors
 			continue
 		}
 		if cronSch != nil {
@@ -43,13 +38,12 @@ func (c *Cron) RunSchedules(schedules []*schedule.Schedule) error {
 		}
 	}
 	c.cron.Start()
-	// https://godoc.org/github.com/robfig/cron
 	return nil
 }
 
-// AddJob ...
+// AddJob adds cron job to list
 func (c *Cron) AddJob(schedule *schedule.Schedule) (err error) {
-	j, err := NewJob(c.cron, schedule, c.pi)
+	j, err := NewJob(c.cron, schedule, c.runner)
 	if err != nil {
 		return
 	}
@@ -67,16 +61,16 @@ func (c *Cron) AddJob(schedule *schedule.Schedule) (err error) {
 	return nil
 }
 
-// Stop ...
+// Stop cron jobs
 func (c *Cron) Stop() {
 	c.cron.Stop()
 }
 
-// GetNext ...
-func GetNext(schedule *schedule.Schedule) (string, error) {
+// GetNext returns next scheduled run from now
+func GetNext(schedule *schedule.Schedule) (time.Time, error) {
 	sched, err := cron.Parse(schedule.Cron)
 	if err != nil {
-		return "", err
+		return time.Now(), err
 	}
-	return sched.Next(time.Now()).String(), nil
+	return sched.Next(time.Now()), nil
 }

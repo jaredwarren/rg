@@ -33,3 +33,5 @@ func (s *colorSvc) Color(ctx context.Context) (res *color.Color, err error) {
 		Color: s.pi.GetColor(),
 	}, nil
 }
+
+// TODO add led service? crud leds and/or other services

@@ -2,7 +2,9 @@ package rg
 
 import (
 	"context"
+	"fmt"
 	"log"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/jaredwarren/rg/cron"
@@ -29,7 +31,10 @@ func NewSchedule(d *bolt.DB, rpi pi.Pi, logger *log.Logger) (schedule.Service, e
 	}
 
 	// Start CRON stuff
-	c := cron.NewCron(rpi)
+	c := cron.NewCron(func(sch *schedule.Schedule) {
+		rpi.SetColor(sch.Color)
+		fmt.Println("SET COLOR:", sch.Color, time.Now().String())
+	})
 	var schedules []*schedule.Schedule
 	if schedules, err = scheduleDb.FetchAll("SCHEDULE"); err != nil {
 		return nil, err
@@ -51,7 +56,7 @@ func (s *scheduleSvc) List(ctx context.Context) (res []*schedule.Schedule, err e
 
 	for _, sch := range res {
 		next, _ := cron.GetNext(sch)
-		sch.Next = next
+		sch.Next = next.String()
 	}
 	return
 }
@@ -85,23 +90,25 @@ func (s *scheduleSvc) Create(ctx context.Context, p *schedule.SchedulePayload) (
 // Remove cron schedule
 func (s *scheduleSvc) Remove(ctx context.Context, p *schedule.RemovePayload) (err error) {
 	s.logger.Print("schedule.remove")
-	// TODO: delete from db, and stop cron and restart everything :(
+
 	// no way to remove cron
-	err = s.db.Delete("SCHEDULE", p.ID)
-	if err != nil {
+	if err = s.db.Delete("SCHEDULE", p.ID); err != nil {
 		return
 	}
 
 	// Restart cron
 	s.cron.Stop()
 
-	s.cron = cron.NewCron(s.pi)
+	s.cron = cron.NewCron(func(sch *schedule.Schedule) {
+		s.pi.SetColor(sch.Color)
+		fmt.Println("SET COLOR:", sch.Color, time.Now().String())
+	})
 	var schedules []*schedule.Schedule
 	if schedules, err = s.db.FetchAll("SCHEDULE"); err != nil {
 		return
 	}
-	err = s.cron.RunSchedules(schedules)
-	if err != nil {
+
+	if err = s.cron.RunSchedules(schedules); err != nil {
 		return
 	}
 

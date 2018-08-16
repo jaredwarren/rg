@@ -33,6 +33,8 @@ var _ = Service("color", func() {
 	})
 })
 
+// TODO: add led service? crud leds and/or other services
+
 // Color current state.
 var Color = Type("Color", func() {
 	Description("Color current state.")
